@@ -41,20 +41,6 @@ And set its executable bit:
 
 	$ chmod +x file.go
 
-An example of Go script:
-
-	#!/usr/bin/goscript
-
-	package main
-
-	import (
-		"fmt"
-	)
-
-	func main() {
-		fmt.Println("Take it on the other side")
-	}
-
 ### Use in shared filesystem
 
 A special case is when there is any Go script into a shared filesystem with

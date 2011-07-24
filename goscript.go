@@ -22,9 +22,6 @@ import (
 // Error exit status
 const ERROR = 1
 
-// Environment variables passed at running a command
-var ENVIRON []string
-
 
 // === Flags
 // ===
@@ -69,7 +66,7 @@ Flags:
 		binaryDir = path.Join(scriptDir, ".go", runtime.GOOS+"_"+runtime.GOARCH)
 	}
 	ext := path.Ext(scriptName)
-	binaryPath = path.Join(binaryDir, strings.TrimRight(scriptName, ext))
+	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
 
 	// Check directory
 	if ok := Exist(binaryDir); !ok {
@@ -79,13 +76,15 @@ Flags:
 		}
 	}
 
+	scriptMtime := getTime(scriptPath)
+
 	// Run the executable, if exist and it has not been modified
 	if ok := Exist(binaryPath); ok {
-		scriptMtime := getTime(scriptPath)
 		binaryMtime := getTime(binaryPath)
 
 		if scriptMtime == binaryMtime {
-			goto _run
+			// Run executable
+			run(binaryPath)
 		}
 	}
 
@@ -96,23 +95,26 @@ Flags:
 	}*/
 
 	// === Compile and link
-	scriptMtime := getTime(scriptPath)
 	comment(scriptPath, true)
 	compiler, linker, archExt := toolchain()
 
-	ENVIRON = os.Environ()
 	objectPath := path.Join(binaryDir, "_go_."+archExt)
 
-	cmdArgs := []string{path.Base(compiler), "-o", objectPath, scriptPath}
-	exitCode := run(compiler, cmdArgs, "")
+	// Compile source file
+	cmd := exec.Command(compiler, "-o", objectPath, scriptPath)
+	out, err := cmd.CombinedOutput()
 	comment(scriptPath, false)
-	if exitCode != 0 {
-		os.Exit(exitCode)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n%s", cmd.Args, out)
+		os.Exit(ERROR)
 	}
 
-	cmdArgs = []string{path.Base(linker), "-o", binaryPath, objectPath}
-	if exitCode = run(linker, cmdArgs, ""); exitCode != 0 {
-		os.Exit(exitCode)
+	// Link executable
+	out, err = exec.Command(linker, "-o", binaryPath, objectPath).
+		CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Linker failed: %s\n%s", err, out)
+		os.Exit(ERROR)
 	}
 
 	// Set mtime of executable just like the source file
@@ -125,9 +127,8 @@ Flags:
 		os.Exit(ERROR)
 	}*/
 
-_run:
-	exitCode = run(binaryPath, []string{scriptPath}, "")
-	os.Exit(exitCode)
+	// Run executable
+	run(binaryPath)
 }
 
 
@@ -190,26 +191,29 @@ func Exist(name string) bool {
 	return false
 }
 
-// Executes a command and returns its exit code.
-func run(cmd string, args []string, dir string) int {
-	// Execute the command
-	process, err := exec.Run(cmd, args, ENVIRON, dir,
-		exec.PassThrough, exec.PassThrough, exec.PassThrough)
+// Executes the executable file
+func run(binary string) {
+	cmd := exec.Command(binary)
+	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not execute: \"%s\"\n",
-			strings.Join(args, " "))
+		fmt.Fprintf(os.Stderr, "Could not execute: \"%s\"\n%s\n",
+			cmd.Args, err.String())
 		os.Exit(ERROR)
 	}
 
-	// Wait for command completion
-	message, err := process.Wait(0)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not wait for: \"%s\"\n",
-			strings.Join(args, " "))
+	err = cmd.Wait()
+	if err != nil { //&& err == *os.Waitmsg {
+		fmt.Fprintf(os.Stderr, "Could not wait for: \"%s\"\n%s\n",
+			cmd.Args, err.String())
 		os.Exit(ERROR)
 	}
 
-	return message.ExitStatus()
+	os.Exit(0)
 }
 
 // Gets the toolchain.

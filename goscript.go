@@ -22,13 +22,12 @@ import (
 // Error exit status
 const ERROR = 1
 
-
 // === Flags
 // ===
 
 var fShared = flag.Bool("shared", false,
 	"whether the script is used on a mixed network of machines or   "+
-	"systems from a shared filesystem")
+		"systems from a shared filesystem")
 
 func usage() {
 	flag.PrintDefaults()
@@ -82,8 +81,7 @@ Flags:
 	if ok := Exist(binaryPath); ok {
 		binaryMtime := getTime(binaryPath)
 
-		if scriptMtime == binaryMtime {
-			// Run executable
+		if scriptMtime <= binaryMtime { // Run executable
 			run(binaryPath)
 		}
 	}
@@ -130,7 +128,6 @@ Flags:
 	// Run executable
 	run(binaryPath)
 }
-
 
 // === Utility
 // ===
@@ -256,4 +253,3 @@ func toolchain() (compiler, linker, archExt string) {
 	linker = path.Join(gobin, archExt+"l")
 	return
 }
-

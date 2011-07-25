@@ -86,12 +86,6 @@ Flags:
 		}
 	}
 
-	// Check script extension
-	/*if ext != ".go" && ext != ".gos" && ext != "" {
-		fmt.Fprintf(os.Stderr, "Wrong extension! It must be \".go\" or \".gos\"\n")
-		os.Exit(ERROR)
-	}*/
-
 	// === Compile and link
 	comment(scriptPath, true)
 	compiler, linker, archExt := toolchain()

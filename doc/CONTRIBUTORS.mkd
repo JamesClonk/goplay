@@ -25,5 +25,3 @@ John Mac <charles.beck@sent.com>
 
 ### Other authors
 
-André Moraes - https://github.com/andrebq
-

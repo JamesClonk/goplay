@@ -7,11 +7,6 @@ Internally, it compiles and links the script file whose executable is saved in
 the subdirectory "*.go*", then it is run. If that executable does not exist or
 its modified time is different than script's, then it's compiled again.
 
-There is not obligation to use an extension, but if it's used then you could use
-"*.go*" if you want syntax highlighting in your editor. Another extension to use
-could be "*.gos*" (Go Script); see directory *misc* for "*.gos*" syntax in
-editor *gedit*.
-
 The use of Go scripts is especially useful:
 
 + During learning

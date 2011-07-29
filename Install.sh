@@ -2,7 +2,7 @@
 set -ev
 
 ## Build
-cd cmd; make install
+make install
 
 ## Clean
 make clean

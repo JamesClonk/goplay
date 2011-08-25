@@ -153,23 +153,23 @@ func setTime(filename string, mtime int64) {
 func comment(filename string, ok bool) {
 	file, err := os.OpenFile(filename, os.O_WRONLY, 0)
 	if err != nil {
-		goto _error
+		goto Error
 	}
 	defer file.Close()
 
 	if ok {
 		if _, err = file.Write([]byte("//")); err != nil {
-			goto _error
+			goto Error
 		}
 	} else {
 		if _, err = file.Write([]byte("#!")); err != nil {
-			goto _error
+			goto Error
 		}
 	}
 
 	return
 
-_error:
+Error:
 	fmt.Fprintf(os.Stderr, "Could not write: %s\n", err)
 	os.Exit(ERROR)
 }
@@ -192,19 +192,14 @@ func run(binary string) {
 
 	err := cmd.Start()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not execute: \"%s\"\n%s\n",
+		fmt.Fprintf(os.Stderr, "Could not execute: %q\n%s\n",
 			cmd.Args, err.String())
 		os.Exit(ERROR)
 	}
 
-	err = cmd.Wait()
-	if err != nil { //&& err == *os.Waitmsg {
-		fmt.Fprintf(os.Stderr, "Could not wait for: \"%s\"\n%s\n",
-			cmd.Args, err.String())
+	if err = cmd.Wait(); err != nil {
 		os.Exit(ERROR)
 	}
-
-	os.Exit(0)
 }
 
 // Gets the toolchain.

@@ -200,6 +200,8 @@ func run(binary string) {
 	if err = cmd.Wait(); err != nil {
 		os.Exit(ERROR)
 	}
+
+	os.Exit(0)
 }
 
 // Gets the toolchain.

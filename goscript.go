@@ -10,6 +10,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"exec"
 	"flag"
 	"fmt"
@@ -19,21 +21,23 @@ import (
 	"strings"
 )
 
-// Error exit status
-const ERROR = 1
 
-// === Flags
-// ===
+const ERROR = 1 // Error exit status
 
-var fShared = flag.Bool("shared", false,
-	"whether the script is used on a mixed network of machines or   "+
-		"systems from a shared filesystem")
+var file *os.File // The Go script
+var Interpreter = []byte("#!/usr/bin/goscript")
+
 
 func usage() {
-	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `Tool to run Go scripts
+
+Usage: goscript file.go
+
+	To run it directly, insert "#!/usr/bin/goscript" in the first line.
+`)
+
 	os.Exit(ERROR)
 }
-// ===
 
 
 func main() {
@@ -43,42 +47,33 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() == 0 {
-		fmt.Fprintf(os.Stderr, `Tool to run Go scripts
-
-== Usage
-Insert "#!/usr/bin/goscript" in the head of the Go script
-
-=== In shared filesystem
-  $ /usr/bin/goscript -shared /path/to/shared-fs/file.go
-
-Flags:
-`)
 		usage()
 	}
 
-	scriptPath := flag.Args()[0] // Relative path
+	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := path.Split(scriptPath)
 
-	if !*fShared {
-		binaryDir = path.Join(scriptDir, ".go")
-	} else {
-		binaryDir = path.Join(scriptDir, ".go", runtime.GOOS+"_"+runtime.GOARCH)
+	// Relative path
+	if scriptDir == "" {
+		scriptDir = "./"
 	}
+
+	// Work in shared filesystems
+	binaryDir = path.Join(scriptDir, ".go", runtime.GOOS+"_"+runtime.GOARCH)
 	ext := path.Ext(scriptName)
 	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
 
 	// Check directory
-	if ok := Exist(binaryDir); !ok {
+	if ok := exist(binaryDir); !ok {
 		if err := os.MkdirAll(binaryDir, 0750); err != nil {
-			fmt.Fprintf(os.Stderr, "Could not make directory: %s\n", err)
-			os.Exit(ERROR)
+			fatalf("Could not make directory: %s\n", err)
 		}
 	}
 
 	scriptMtime := getTime(scriptPath)
 
 	// Run the executable, if exist and it has not been modified
-	if ok := Exist(binaryPath); ok {
+	if ok := exist(binaryPath); ok {
 		binaryMtime := getTime(binaryPath)
 
 		if scriptMtime <= binaryMtime { // Run executable
@@ -86,8 +81,15 @@ Flags:
 		}
 	}
 
+	file = openFile(scriptPath)
+	defer file.Close()
+
 	// === Compile and link
-	comment(scriptPath, true)
+	hasInterpreter := checkInterpreter(file)
+
+	if hasInterpreter {
+		comment(file)
+	}
 	compiler, linker, archExt := toolchain()
 
 	objectPath := path.Join(binaryDir, "_go_."+archExt)
@@ -95,18 +97,19 @@ Flags:
 	// Compile source file
 	cmd := exec.Command(compiler, "-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
-	comment(scriptPath, false)
+
+	if hasInterpreter {
+		commentOut(file)
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n%s", cmd.Args, out)
-		os.Exit(ERROR)
+		fatalf("%s\n%s", cmd.Args, out)
 	}
 
 	// Link executable
 	out, err = exec.Command(linker, "-o", binaryPath, objectPath).
 		CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Linker failed: %s\n%s", err, out)
-		os.Exit(ERROR)
+		fatalf("Linker failed: %s\n%s", err, out)
 	}
 
 	// Set mtime of executable just like the source file
@@ -114,10 +117,9 @@ Flags:
 	setTime(binaryPath, scriptMtime)
 
 	// Cleaning
-	/*if err := os.Remove(objectPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Could not remove: %s\n", err)
-		os.Exit(ERROR)
-	}*/
+	if err := os.Remove(objectPath); err != nil {
+		fatalf("Could not remove object file: %s\n", err)
+	}
 
 	// Run executable
 	run(binaryPath)
@@ -130,8 +132,7 @@ Flags:
 func _time(filename string, mtime int64) int64 {
 	info, err := os.Stat(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not access: %s\n", err)
-		os.Exit(ERROR)
+		fatalf("%s\n", err)
 	}
 
 	if mtime != 0 {
@@ -149,37 +150,56 @@ func setTime(filename string, mtime int64) {
 	_time(filename, mtime)
 }
 
-// Comments or comments out the line interpreter.
-func comment(filename string, ok bool) {
-	file, err := os.OpenFile(filename, os.O_WRONLY, 0)
+// ===
+
+// Comments the line interpreter.
+func comment(fd *os.File) {
+	file.Seek(0, 0)
+
+	if _, err := fd.Write([]byte("//")); err != nil {
+		fatalf("Could not comment the line interpreter: %s\n", err)
+	}
+}
+
+// Comments out the line interpreter.
+func commentOut(fd *os.File) {
+	file.Seek(0, 0)
+
+	if _, err := fd.Write([]byte("#!")); err != nil {
+		fatalf("Could not comment out the line interpreter: %s\n", err)
+	}
+}
+
+// ===
+
+// Checks if the file has the interpreter line.
+func checkInterpreter(fd *os.File) bool {
+	buf := bufio.NewReader(fd)
+
+	firstLine, _, err := buf.ReadLine()
 	if err != nil {
-		goto Error
-	}
-	defer file.Close()
-
-	if ok {
-		if _, err = file.Write([]byte("//")); err != nil {
-			goto Error
-		}
-	} else {
-		if _, err = file.Write([]byte("#!")); err != nil {
-			goto Error
-		}
+		fatalf("Could not read the first line: %s\n", err)
 	}
 
-	return
-
-Error:
-	fmt.Fprintf(os.Stderr, "Could not write: %s\n", err)
-	os.Exit(ERROR)
+	return bytes.Equal(firstLine, Interpreter)
 }
 
 // Checks if exist a file.
-func Exist(name string) bool {
+func exist(name string) bool {
 	if _, err := os.Stat(name); err == nil {
 		return true
 	}
 	return false
+}
+
+// Opens the script in mode for reading and writing.
+func openFile(filename string) *os.File {
+	f, err := os.OpenFile(filename, os.O_RDWR, 0)
+	if err != nil {
+		fatalf("Could not open file: %s\n", err)
+	}
+
+	return f
 }
 
 // Executes the executable file
@@ -192,9 +212,7 @@ func run(binary string) {
 
 	err := cmd.Start()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not execute: %q\n%s\n",
-			cmd.Args, err.String())
-		os.Exit(ERROR)
+		fatalf("Could not execute: %q\n%s\n", cmd.Args, err)
 	}
 
 	if err = cmd.Wait(); err != nil {
@@ -217,9 +235,8 @@ func toolchain() (compiler, linker, archExt string) {
 	if goroot == "" {
 		goroot = os.Getenv("GOROOT_FINAL")
 		if goroot == "" {
-			fmt.Fprintf(os.Stderr, "Environment variable GOROOT neither"+
+			fatalf("Environment variable GOROOT neither" +
 				" GOROOT_FINAL has been set\n")
-			os.Exit(ERROR)
 		}
 	}
 
@@ -236,11 +253,18 @@ func toolchain() (compiler, linker, archExt string) {
 	// === Set toolchain
 	archExt, ok := arch_ext[goarch]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "Unknown GOARCH: %s\n", goarch)
-		os.Exit(ERROR)
+		fatalf("Unknown GOARCH: %s\n", goarch)
 	}
 
 	compiler = path.Join(gobin, archExt+"g")
 	linker = path.Join(gobin, archExt+"l")
 	return
+}
+
+// === Errors
+// ===
+
+func fatalf(format string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, "goscript: "+format, a...)
+	os.Exit(ERROR)
 }

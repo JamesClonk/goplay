@@ -20,4 +20,3 @@ func main() {
 	}
 	fmt.Printf("Entered: %s", line)
 }
-

@@ -7,6 +7,9 @@ Internally, it compiles and links the script file whose executable is saved in
 the subdirectory "*.go*", then it is run. If that executable does not exist or
 its modified time is different than script's, then it's compiled again.
 
+It works into a shared filesystem since it's created a directory for each target
+environment.
+
 The use of Go scripts is especially useful:
 
 + During learning
@@ -21,28 +24,18 @@ The use of Go scripts is especially useful:
 	$ git clone git://github.com/kless/goscript.git
 	$ cd goscript && ./Install.sh && cd -
 
-Since the command *env* doesn't allow to pass any option to the interpreter,
-then the solution has been to create a link in */usr/bin/goscript*. That link
-is created when installing with *Install.sh*.
-
 
 ## Operating instructions
 
-Insert in the head of the Go Script:
+	goscript file.go
+
+To run it using its name, insert in the first line of the Go file:
 
 	#!/usr/bin/goscript
 
-And set its executable bit:
+and set its executable bit:
 
-	$ chmod +x file.go
-
-### Use in shared filesystem
-
-A special case is when there is any Go script into a shared filesystem with
-access from a heterogeneous network. Then, there is to call the Go script from
-your system so it can takes values about the system where is going to run:
-
-	$ /usr/bin/goscript -shared /path/to/shared-fs/file.go
+	chmod +x file.go
 
 
 ## Copyright and licensing

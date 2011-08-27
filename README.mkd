@@ -21,8 +21,8 @@ The use of Go scripts is especially useful:
 
 ## Installation
 
-	$ git clone git://github.com/kless/goscript.git
-	$ cd goscript && ./Install.sh && cd -
+	git clone git://github.com/kless/goscript.git
+	cd goscript && ./Install.sh && cd -
 
 
 ## Operating instructions

@@ -25,8 +25,8 @@ import (
 )
 
 
-const ERROR = 1 // Error exit status
-const SUBDIR = ".gonow"  // To install compiled programs
+const ERROR = 1      // Error exit status
+const SUBDIR = ".go" // To install compiled programs
 
 var interpreter = []byte("#!/usr/bin/gonow")
 var file *os.File // The Go file
@@ -77,14 +77,14 @@ func main() {
 		binaryDir = path.Join(env.gopath, "pkg",
 			runtime.GOOS+"_"+runtime.GOARCH, SUBDIR,
 			hash(scriptDirAbs))
-	// Local directory
+		// Local directory
 	} else {
 		if scriptDir == "" {
 			scriptDir = "./"
 		}
 
 		// Work in shared filesystems
-		binaryDir = path.Join(scriptDir, ".go",
+		binaryDir = path.Join(scriptDir, SUBDIR,
 			runtime.GOOS+"_"+runtime.GOARCH)
 	}
 
@@ -249,7 +249,7 @@ func getEnv() *goEnv {
 
 	return &goEnv{
 		goroot: goroot,
-		gobin: gobin,
+		gobin:  gobin,
 		goarch: goarch,
 		gopath: gopath,
 	}

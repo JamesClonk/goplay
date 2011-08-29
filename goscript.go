@@ -15,17 +15,25 @@ import (
 	"exec"
 	"flag"
 	"fmt"
+	"hash/adler32"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
 
 const ERROR = 1 // Error exit status
+const SUBDIR = ".gonow"  // To install compiled programs
 
-var file *os.File // The Go script
-var Interpreter = []byte("#!/usr/bin/goscript")
+var interpreter = []byte("#!/usr/bin/goscript")
+var file *os.File // The Go file
+
+type goEnv struct {
+	goroot, gobin, goarch, gopath string
+}
 
 
 func usage() {
@@ -50,18 +58,38 @@ func main() {
 		usage()
 	}
 
+	// Go variables
+	env := getEnv()
+
+	// === Paths
 	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := path.Split(scriptPath)
+	ext := path.Ext(scriptName)
 
-	// Relative path
-	if scriptDir == "" {
-		scriptDir = "./"
+	// Global directory
+	if env.gopath != "" {
+		// Absolute path to calculate its hash.
+		scriptDirAbs, err := filepath.Abs(scriptDir)
+		if err != nil {
+			fatalf("Could not get absolute path: %s\n", err)
+		}
+
+		binaryDir = path.Join(env.gopath, "pkg",
+			runtime.GOOS+"_"+runtime.GOARCH, SUBDIR,
+			hash(scriptDirAbs))
+	// Local directory
+	} else {
+		if scriptDir == "" {
+			scriptDir = "./"
+		}
+
+		// Work in shared filesystems
+		binaryDir = path.Join(scriptDir, ".go",
+			runtime.GOOS+"_"+runtime.GOARCH)
 	}
 
-	// Work in shared filesystems
-	binaryDir = path.Join(scriptDir, ".go", runtime.GOOS+"_"+runtime.GOARCH)
-	ext := path.Ext(scriptName)
 	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
+	// ===
 
 	// Check directory
 	if ok := exist(binaryDir); !ok {
@@ -90,7 +118,7 @@ func main() {
 	if hasInterpreter {
 		comment(file)
 	}
-	compiler, linker, archExt := toolchain()
+	compiler, linker, archExt := toolchain(env)
 
 	objectPath := path.Join(binaryDir, "_go_."+archExt)
 
@@ -181,7 +209,7 @@ func checkInterpreter(fd *os.File) bool {
 		fatalf("Could not read the first line: %s\n", err)
 	}
 
-	return bytes.Equal(firstLine, Interpreter)
+	return bytes.Equal(firstLine, interpreter)
 }
 
 // Checks if exist a file.
@@ -190,6 +218,47 @@ func exist(name string) bool {
 		return true
 	}
 	return false
+}
+
+// Gets Go environment variables
+func getEnv() *goEnv {
+	goroot := os.Getenv("GOROOT")
+	if goroot == "" {
+		goroot = os.Getenv("GOROOT_FINAL")
+		if goroot == "" {
+			fatalf("Environment variable GOROOT neither" +
+				" GOROOT_FINAL has been set\n")
+		}
+	}
+
+	gobin := os.Getenv("GOBIN")
+	if gobin == "" {
+		gobin = goroot + "/bin"
+	}
+
+	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+
+	// Global directory where install binaries
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = goroot
+	}
+
+	return &goEnv{
+		goroot: goroot,
+		gobin: gobin,
+		goarch: goarch,
+		gopath: gopath,
+	}
+}
+
+// Generates a hash for a file path.
+func hash(filePath string) string {
+	crc := adler32.Checksum([]byte(filePath))
+	return strconv.Uitoa(uint(crc))
 }
 
 // Opens the script in mode for reading and writing.
@@ -223,41 +292,20 @@ func run(binary string) {
 }
 
 // Gets the toolchain.
-func toolchain() (compiler, linker, archExt string) {
+func toolchain(env *goEnv) (compiler, linker, archExt string) {
 	arch_ext := map[string]string{
 		"amd64": "6",
 		"386":   "8",
 		"arm":   "5",
 	}
 
-	// === Environment variables
-	goroot := os.Getenv("GOROOT")
-	if goroot == "" {
-		goroot = os.Getenv("GOROOT_FINAL")
-		if goroot == "" {
-			fatalf("Environment variable GOROOT neither" +
-				" GOROOT_FINAL has been set\n")
-		}
-	}
-
-	gobin := os.Getenv("GOBIN")
-	if gobin == "" {
-		gobin = goroot + "/bin"
-	}
-
-	goarch := os.Getenv("GOARCH")
-	if goarch == "" {
-		goarch = runtime.GOARCH
-	}
-
-	// === Set toolchain
-	archExt, ok := arch_ext[goarch]
+	archExt, ok := arch_ext[env.goarch]
 	if !ok {
-		fatalf("Unknown GOARCH: %s\n", goarch)
+		fatalf("Unknown GOARCH: %s\n", env.goarch)
 	}
 
-	compiler = path.Join(gobin, archExt+"g")
-	linker = path.Join(gobin, archExt+"l")
+	compiler = path.Join(env.gobin, archExt+"g")
+	linker = path.Join(env.gobin, archExt+"l")
 	return
 }
 

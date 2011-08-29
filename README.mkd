@@ -3,8 +3,9 @@ goscript
 
 **goscript** allows to use Go like if were a script language.
 
-Internally, it compiles and links the script file whose executable is saved in
-the subdirectory "*.go*", then it is run. If that executable does not exist or
+Internally, it compiles and links the Go file; the executable is saved in a
+global directory if GOROOT or GOPATH is set, else is saved in the local
+directory "*.go"; then, it is run. If that executable does not exist or
 its modified time is different than script's, then it's compiled again.
 
 It works into a shared filesystem since it's created a directory for each target

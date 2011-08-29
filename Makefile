@@ -1,4 +1,4 @@
-# Copyright 2010  The "goscript" Authors
+# Copyright 2010  The "gonow" Authors
 #
 # Use of this source code is governed by the BSD-2 Clause license
 # that can be found in the LICENSE file.
@@ -9,9 +9,9 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=goscript
+TARG=gonow
 GOFILES=\
-	goscript.go\
+	gonow.go\
 
 include $(GOROOT)/src/Make.cmd
 
@@ -19,9 +19,9 @@ include $(GOROOT)/src/Make.cmd
 install:
 ifndef GOBIN
 	mv $(TARG) $(GOROOT)/bin/$(TARG)
-	[ -L /usr/bin/goscript ] || sudo ln -s $(GOROOT)/bin/$(TARG) /usr/bin/goscript
+	[ -L /usr/bin/gonow ] || sudo ln -s $(GOROOT)/bin/$(TARG) /usr/bin/gonow
 else
 	mv $(TARG) $(GOBIN)/$(TARG)
-	[ -L /usr/bin/goscript ] || sudo ln -s $(GOBIN)/$(TARG) /usr/bin/goscript
+	[ -L /usr/bin/gonow ] || sudo ln -s $(GOBIN)/$(TARG) /usr/bin/gonow
 endif
 

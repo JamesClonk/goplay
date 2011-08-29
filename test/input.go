@@ -1,4 +1,4 @@
-#!/usr/bin/goscript
+#!/usr/bin/gonow
 
 package main
 

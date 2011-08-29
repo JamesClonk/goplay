@@ -3,19 +3,19 @@
 [Main]
 version: 0.9.9
 summary: Tool to run Go scripts
-download-url: git://github.com/kless/goscript.git
+download-url: git://github.com/kless/gonow.git
 author: John Mac
 author-email: charles.beck@sent.com
 
 [Optional]
-home-page: https://github.com/kless/goscript
+home-page: https://github.com/kless/gonow
 keywords: script, Go
 
 [CORE]
 metadata-version: 1.1
 project-type: tool
-project-name: goscript
-package-name: goscript
+project-name: gonow
+package-name: gonow
 license: bsd-2
 vcs: git
 

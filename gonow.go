@@ -1,4 +1,4 @@
-// Copyright 2010  The "goscript" Authors
+// Copyright 2010  The "gonow" Authors
 //
 // Use of this source code is governed by the BSD-2 Clause license
 // that can be found in the LICENSE file.
@@ -28,7 +28,7 @@ import (
 const ERROR = 1 // Error exit status
 const SUBDIR = ".gonow"  // To install compiled programs
 
-var interpreter = []byte("#!/usr/bin/goscript")
+var interpreter = []byte("#!/usr/bin/gonow")
 var file *os.File // The Go file
 
 type goEnv struct {
@@ -39,9 +39,9 @@ type goEnv struct {
 func usage() {
 	fmt.Fprintf(os.Stderr, `Tool to run Go scripts
 
-Usage: goscript file.go
+Usage: gonow file.go
 
-	To run it directly, insert "#!/usr/bin/goscript" in the first line.
+	To run it directly, insert "#!/usr/bin/gonow" in the first line.
 `)
 
 	os.Exit(ERROR)
@@ -313,6 +313,6 @@ func toolchain(env *goEnv) (compiler, linker, archExt string) {
 // ===
 
 func fatalf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, "goscript: "+format, a...)
+	fmt.Fprintf(os.Stderr, "gonow: "+format, a...)
 	os.Exit(ERROR)
 }

@@ -37,7 +37,7 @@ type goEnv struct {
 
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Tool to run Go scripts
+	fmt.Fprintf(os.Stderr, `Tool to run Go source files automatically
 
 Usage: gonow file.go
 

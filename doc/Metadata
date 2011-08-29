@@ -2,7 +2,7 @@
 
 [Main]
 version: 0.9.9
-summary: Tool to run Go programs compiling and linking automatically
+summary: Tool to run Go source files automatically
 download-url: git://github.com/kless/gonow.git
 author: John Mac
 author-email: charles.beck@sent.com

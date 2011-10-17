@@ -24,32 +24,37 @@ import (
 	"strings"
 )
 
+const (
+	ERROR  = 1     // Error exit status
+	SUBDIR = ".go" // To install compiled programs
+)
 
-const ERROR = 1      // Error exit status
-const SUBDIR = ".go" // To install compiled programs
-
-var interpreter = []byte("#!/usr/bin/gonow")
-var file *os.File // The Go file
+var (
+	interpreter = []byte("#!/usr/bin/gonow")
+	file        *os.File // The Go file
+)
 
 type goEnv struct {
 	goroot, gobin, goarch, gopath string
 }
 
-
 func usage() {
 	fmt.Fprintf(os.Stderr, `Tool to run Go source files automatically
 
-Usage: gonow file.go
+Usage:
+	+ To run it directly, insert "#!/usr/bin/gonow" in the first line.
+	+ gonow [-f] file.go
 
-	To run it directly, insert "#!/usr/bin/gonow" in the first line.
 `)
-
+	flag.PrintDefaults()
 	os.Exit(ERROR)
 }
 
-
 func main() {
 	var binaryDir, binaryPath string
+
+	// === Flags
+	force := flag.Bool("f", false, "force to compile")
 
 	flag.Usage = usage
 	flag.Parse()
@@ -57,6 +62,7 @@ func main() {
 	if flag.NArg() == 0 {
 		usage()
 	}
+	// * * *
 
 	// Go variables
 	env := getEnv()
@@ -101,10 +107,10 @@ func main() {
 	scriptMtime := getTime(scriptPath)
 
 	// Run the executable, if exist and it has not been modified
-	if ok := exist(binaryPath); ok {
+	if !*force && exist(binaryPath) {
 		binaryMtime := getTime(binaryPath)
 
-		if scriptMtime <= binaryMtime { // Run executable
+		if scriptMtime <= binaryMtime {
 			run(binaryPath)
 		}
 	}

@@ -1,4 +1,4 @@
-// Copyright 2010  The "gonow" Authors
+// Copyright 2010  The "GoNow" Authors
 //
 // Use of this source code is governed by the BSD-2 Clause license
 // that can be found in the LICENSE file.
@@ -56,7 +56,7 @@ func main() {
 	var binaryDir, binaryPath string
 
 	// === Flags
-	force := flag.Bool("f", false, "force to compile")
+	force := flag.Bool("f", false, "force compilation")
 
 	flag.Usage = usage
 	flag.Parse()

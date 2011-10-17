@@ -1,4 +1,4 @@
-#!/usr/bin/gonow
+#!/usr/bin/env gonow
 
 package main
 

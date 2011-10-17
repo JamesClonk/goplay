@@ -31,10 +31,6 @@ environment.
 
 To run it using its name, insert in the first line of the Go file:
 
-	#!/usr/bin/gonow
-
-or
-
 	#!/usr/bin/env gonow
 
 and set its executable bit:

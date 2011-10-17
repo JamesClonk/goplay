@@ -32,7 +32,7 @@ const (
 var (
 	file *os.File // The Go file
 
-	interpreter    = []byte("#!/usr/bin/gonow")
+	//interpreter    = []byte("#!/usr/bin/gonow")
 	interpreterEnv = []byte("#!/usr/bin/env gonow")
 )
 
@@ -44,7 +44,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `Tool to run Go source files automatically
 
 Usage:
-	+ To run it directly, insert "#!/usr/bin/gonow" in the first line.
+	+ To run it directly, insert "#!/usr/bin/env gonow" in the first line.
 	+ gonow [-f] file.go
 
 `)
@@ -217,10 +217,10 @@ func checkInterpreter(fd *os.File) bool {
 		fatalf("Could not read the first line: %s\n", err)
 	}
 
-	if bytes.Equal(firstLine, interpreterEnv) {
+	/*if bytes.Equal(firstLine, interpreter) {
 		return true
-	}
-	return bytes.Equal(firstLine, interpreter)
+	}*/
+	return bytes.Equal(firstLine, interpreterEnv)
 }
 
 // Checks if exist a file.
@@ -320,8 +320,8 @@ func toolchain(env *goEnv) (compiler, linker, archExt string) {
 	return
 }
 
+//
 // === Errors
-// ===
 
 func fatalf(format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, "gonow: "+format, a...)

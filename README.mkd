@@ -1,7 +1,7 @@
 GoNow
 =====
 
-**GoNow** enables to use Go like if were a script language.
+**GoNow** allows using Go like if were a script language.
 
 Internally, it compiles and links the Go file; the executable is saved into a
 global directory if *GOROOT* or *GOPATH* is set, else it is saved in the local
@@ -11,10 +11,11 @@ its modified time is different than script's, then it's compiled again.
 It works into a shared filesystem since it's created a directory for each target
 environment.
 
-"gonow" allows use Go:
+"GoNow" is specially useful for:
 
-+ During learning and development
-+ For administration issues
++ Learning
++ Testing of code snippets
++ Administration issues
 + Boot init of operating systems
 + Web developing; by example for the routing
 + Interfaces of database models

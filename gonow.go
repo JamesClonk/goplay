@@ -30,8 +30,10 @@ const (
 )
 
 var (
-	interpreter = []byte("#!/usr/bin/gonow")
-	file        *os.File // The Go file
+	file *os.File // The Go file
+
+	interpreter    = []byte("#!/usr/bin/gonow")
+	interpreterEnv = []byte("#!/usr/bin/env gonow")
 )
 
 type goEnv struct {
@@ -215,6 +217,9 @@ func checkInterpreter(fd *os.File) bool {
 		fatalf("Could not read the first line: %s\n", err)
 	}
 
+	if bytes.Equal(firstLine, interpreterEnv) {
+		return true
+	}
 	return bytes.Equal(firstLine, interpreter)
 }
 

@@ -97,9 +97,10 @@ func main() {
 	}
 
 	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
-	
-	if os.Getenv("GOOS") == "windows" {
-		binaryPath += ".exe" // Windows doesn't like running binaries without the .exe extension
+
+	// Windows doesn't like running binaries without the .exe extension
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
 	}
 	// ===
 
@@ -190,7 +191,7 @@ func setTime(filename string, mtime int64) {
 	_time(filename, mtime)
 }
 
-// ===
+// * * *
 
 // Comments the line interpreter.
 func comment(fd *os.File) {
@@ -210,7 +211,7 @@ func commentOut(fd *os.File) {
 	}
 }
 
-// ===
+// * * *
 
 // Checks if the file has the interpreter line.
 func checkInterpreter(fd *os.File) bool {

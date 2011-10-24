@@ -97,6 +97,10 @@ func main() {
 	}
 
 	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
+	
+	if os.Getenv("GOOS") == "windows" {
+		binaryPath += ".exe" // Windows doesn't like running binaries without the .exe extension
+	}
 	// ===
 
 	// Check directory

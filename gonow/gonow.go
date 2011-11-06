@@ -37,7 +37,7 @@ var (
 )
 
 type goEnv struct {
-	goroot, gobin, goarch, gopath string
+	goroot, gobin, gopath string
 }
 
 func usage() {
@@ -64,7 +64,7 @@ func main() {
 	if flag.NArg() == 0 {
 		usage()
 	}
-	// * * *
+	// ===
 
 	// Go variables
 	env := getEnv()
@@ -242,19 +242,13 @@ func getEnv() *goEnv {
 	if goroot == "" {
 		goroot = os.Getenv("GOROOT_FINAL")
 		if goroot == "" {
-			fatalf("Environment variable GOROOT neither" +
-				" GOROOT_FINAL has been set\n")
+			fatalf("Environment variable GOROOT neither GOROOT_FINAL has been set\n")
 		}
 	}
 
 	gobin := os.Getenv("GOBIN")
 	if gobin == "" {
 		gobin = goroot + "/bin"
-	}
-
-	goarch := os.Getenv("GOARCH")
-	if goarch == "" {
-		goarch = runtime.GOARCH
 	}
 
 	// Global directory where install binaries
@@ -266,7 +260,6 @@ func getEnv() *goEnv {
 	return &goEnv{
 		goroot: goroot,
 		gobin:  gobin,
-		goarch: goarch,
 		gopath: gopath,
 	}
 }
@@ -309,15 +302,15 @@ func run(binary string) {
 
 // Gets the toolchain.
 func toolchain(env *goEnv) (compiler, linker, archExt string) {
-	arch_ext := map[string]string{
+	archToExt := map[string]string{
 		"amd64": "6",
 		"386":   "8",
 		"arm":   "5",
 	}
 
-	archExt, ok := arch_ext[env.goarch]
+	archExt, ok := archToExt[runtime.GOARCH]
 	if !ok {
-		fatalf("Unknown GOARCH: %s\n", env.goarch)
+		fatalf("Unknown GOARCH: %s\n", runtime.GOARCH)
 	}
 
 	compiler = path.Join(env.gobin, archExt+"g")

@@ -37,7 +37,7 @@ var (
 )
 
 type goEnv struct {
-	goroot, gobin, gopath string
+	gobin, gopath string
 }
 
 func usage() {
@@ -258,7 +258,6 @@ func getEnv() *goEnv {
 	}
 
 	return &goEnv{
-		goroot: goroot,
 		gobin:  gobin,
 		gopath: gopath,
 	}

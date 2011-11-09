@@ -12,11 +12,11 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"exec"
 	"flag"
 	"fmt"
 	"hash/adler32"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"

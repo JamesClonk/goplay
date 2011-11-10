@@ -279,7 +279,7 @@ func openFile(filename string) *os.File {
 	return f
 }
 
-// Executes the executable file
+// Executes the binary file.
 func run(binary string) {
 	cmd := exec.Command(binary)
 	cmd.Env = os.Environ()
@@ -292,11 +292,14 @@ func run(binary string) {
 		fatalf("Could not execute: %q\n%s\n", cmd.Args, err)
 	}
 
-	if err = cmd.Wait(); err != nil {
-		os.Exit(ERROR)
-	}
+	err = cmd.Wait()
 
-	os.Exit(0)
+	// Return the exit status code of the program to run.
+	if msg, ok := err.(*exec.ExitError); ok { // there is error code
+		os.Exit(msg.ExitStatus())
+	} else {
+		os.Exit(0)
+	}
 }
 
 // Gets the toolchain.

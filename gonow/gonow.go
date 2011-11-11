@@ -24,10 +24,7 @@ import (
 	"strings"
 )
 
-const (
-	ERROR  = 1     // Error exit status
-	SUBDIR = ".go" // To install compiled programs
-)
+const SUBDIR = ".go" // To install compiled programs
 
 var (
 	file *os.File // The Go file
@@ -321,7 +318,9 @@ func toolchain(env *goEnv) (compiler, linker, archExt string) {
 }
 
 //
-// === Errors
+// === Error
+
+const ERROR = 1
 
 func fatalf(format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, "gonow: "+format, a...)

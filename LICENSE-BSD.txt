@@ -1,4 +1,5 @@
 Copyright 2010  The "GoNow" Authors
+All rights reserved.
 
 BSD 2-Clause License
 

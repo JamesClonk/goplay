@@ -39,7 +39,7 @@ and set its executable bit:
 	chmod +x file.go
 
 
-## Licensing
+## Copyright and licensing
 
 ***Copyright 2010  The "GoNow" Authors***  
 See file AUTHORS and CONTRIBUTORS.

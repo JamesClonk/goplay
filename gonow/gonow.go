@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const SUBDIR = ".go" // To install compiled programs
@@ -114,7 +115,7 @@ func main() {
 	if !*force && exist(binaryPath) {
 		binaryMtime := getTime(binaryPath)
 
-		if scriptMtime <= binaryMtime {
+		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
 			run(binaryPath)
 		}
 	}
@@ -150,10 +151,6 @@ func main() {
 		fatalf("Linker failed: %s\n%s", err, out)
 	}
 
-	// Set mtime of executable just like the source file
-	setTime(scriptPath, scriptMtime)
-	setTime(binaryPath, scriptMtime)
-
 	// Cleaning
 	if err := os.Remove(objectPath); err != nil {
 		fatalf("Could not remove object file: %s\n", err)
@@ -165,30 +162,6 @@ func main() {
 
 // === Utility
 // ===
-
-// Base to access to "mtime" of given file.
-func _time(filename string, mtime int64) int64 {
-	info, err := os.Stat(filename)
-	if err != nil {
-		fatalf("%s\n", err)
-	}
-
-	if mtime != 0 {
-		info.Mtime_ns = mtime
-		return 0
-	}
-	return info.Mtime_ns
-}
-
-func getTime(filename string) int64 {
-	return _time(filename, 0)
-}
-
-func setTime(filename string, mtime int64) {
-	_time(filename, mtime)
-}
-
-// * * *
 
 // Comments the line interpreter.
 func comment(fd *os.File) {
@@ -219,9 +192,6 @@ func checkInterpreter(fd *os.File) bool {
 		fatalf("Could not read the first line: %s\n", err)
 	}
 
-	/*if bytes.Equal(firstLine, interpreter) {
-		return true
-	}*/
 	return bytes.Equal(firstLine, interpreterEnv)
 }
 
@@ -233,7 +203,7 @@ func exist(name string) bool {
 	return false
 }
 
-// Gets Go environment variables
+// Gets Go environment variables.
 func getEnv() *goEnv {
 	goroot := os.Getenv("GOROOT")
 	if goroot == "" {
@@ -258,6 +228,16 @@ func getEnv() *goEnv {
 		gobin:  gobin,
 		gopath: gopath,
 	}
+}
+
+// Gets the modification time.
+func getTime(filename string) time.Time {
+	info, err := os.Stat(filename)
+	if err != nil {
+		fatalf("%s\n", err)
+	}
+
+	return info.ModTime()
 }
 
 // Generates a hash for a file path.

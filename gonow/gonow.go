@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/build"
 	"hash/adler32"
 	"os"
 	"os/exec"
@@ -129,9 +130,9 @@ func main() {
 	if hasInterpreter {
 		comment(file)
 	}
-	compiler, linker, archExt := toolchain(env)
+	compiler, linker, archChar := toolchain(env)
 
-	objectPath := path.Join(binaryDir, "_go_."+archExt)
+	objectPath := path.Join(binaryDir, "_go_."+archChar)
 
 	// Compile source file
 	cmd := exec.Command(compiler, "-o", objectPath, scriptPath)
@@ -280,20 +281,14 @@ func run(binary string) {
 }
 
 // Gets the toolchain.
-func toolchain(env *goEnv) (compiler, linker, archExt string) {
-	archToExt := map[string]string{
-		"amd64": "6",
-		"386":   "8",
-		"arm":   "5",
+func toolchain(env *goEnv) (compiler, linker, archChar string) {
+	archChar, err := build.ArchChar(runtime.GOARCH)
+	if err != nil {
+		fatalf("%s", err)
 	}
 
-	archExt, ok := archToExt[runtime.GOARCH]
-	if !ok {
-		fatalf("Unknown GOARCH: %s\n", runtime.GOARCH)
-	}
-
-	compiler = path.Join(env.gobin, archExt+"g")
-	linker = path.Join(env.gobin, archExt+"l")
+	compiler = path.Join(env.gobin, archChar+"g")
+	linker = path.Join(env.gobin, archChar+"l")
 	return
 }
 

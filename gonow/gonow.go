@@ -105,10 +105,10 @@ func main() {
 	scriptMtime := getTime(scriptPath)
 
 	// === Run and exit
-	// If the executable exist and it has not been modified
 	if !*force && exist(binaryPath) {
 		binaryMtime := getTime(binaryPath)
 
+		// executable not modified
 		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
 			runAndExit(binaryPath)
 		}
@@ -160,7 +160,6 @@ func main() {
 		fatalf("Could not remove object file: %s\n", err)
 	}
 
-	// Run executable
 	runAndExit(binaryPath)
 }
 

@@ -18,7 +18,6 @@ import (
 	"hash/adler32"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -70,8 +69,8 @@ func main() {
 
 	// === Paths
 	scriptPath := flag.Args()[0]
-	scriptDir, scriptName := path.Split(scriptPath)
-	ext := path.Ext(scriptName)
+	scriptDir, scriptName := filepath.Split(scriptPath)
+	ext := filepath.Ext(scriptName)
 
 	// Global directory
 	if env.gopath != "" {
@@ -81,7 +80,7 @@ func main() {
 			fatalf("Could not get absolute path: %s\n", err)
 		}
 
-		binaryDir = path.Join(env.gopath, "pkg",
+		binaryDir = filepath.Join(env.gopath, "pkg",
 			runtime.GOOS+"_"+runtime.GOARCH, SUBDIR,
 			hash(scriptDirAbs))
 		// Local directory
@@ -91,11 +90,11 @@ func main() {
 		}
 
 		// Work in shared filesystems
-		binaryDir = path.Join(scriptDir, SUBDIR,
+		binaryDir = filepath.Join(scriptDir, SUBDIR,
 			runtime.GOOS+"_"+runtime.GOARCH)
 	}
 
-	binaryPath = path.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
+	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
 
 	// Windows doesn't like running binaries without the .exe extension
 	if runtime.GOOS == "windows" {
@@ -125,16 +124,21 @@ func main() {
 	defer file.Close()
 
 	// === Compile and link
-	hasInterpreter := checkInterpreter(file)
+	archChar, err := build.ArchChar(runtime.GOARCH)
+	if err != nil {
+		fatalf("%s", err)
+	}
 
+	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
+	compiler := filepath.Join(env.gobin, archChar+"g")
+	linker := filepath.Join(env.gobin, archChar+"l")
+
+	// Compile source file
+	hasInterpreter := checkInterpreter(file)
 	if hasInterpreter {
 		comment(file)
 	}
-	compiler, linker, archChar := toolchain(env)
 
-	objectPath := path.Join(binaryDir, "_go_."+archChar)
-
-	// Compile source file
 	cmd := exec.Command(compiler, "-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
@@ -278,18 +282,6 @@ func run(binary string) {
 	} else {
 		os.Exit(0)
 	}
-}
-
-// Gets the toolchain.
-func toolchain(env *goEnv) (compiler, linker, archChar string) {
-	archChar, err := build.ArchChar(runtime.GOARCH)
-	if err != nil {
-		fatalf("%s", err)
-	}
-
-	compiler = path.Join(env.gobin, archChar+"g")
-	linker = path.Join(env.gobin, archChar+"l")
-	return
 }
 
 //

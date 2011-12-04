@@ -57,33 +57,6 @@ func exist(name string) bool {
 	return false
 }
 
-// Gets Go environment variables.
-func getEnv() *goEnv {
-	goroot := os.Getenv("GOROOT")
-	if goroot == "" {
-		goroot = os.Getenv("GOROOT_FINAL")
-		if goroot == "" {
-			fatalf("Environment variable GOROOT neither GOROOT_FINAL has been set\n")
-		}
-	}
-
-	gobin := os.Getenv("GOBIN")
-	if gobin == "" {
-		gobin = goroot + "/bin"
-	}
-
-	// Global directory where install binaries
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		gopath = goroot
-	}
-
-	return &goEnv{
-		gobin:  gobin,
-		gopath: gopath,
-	}
-}
-
 // Gets the modification time.
 func getTime(filename string) time.Time {
 	info, err := os.Stat(filename)

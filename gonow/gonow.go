@@ -27,10 +27,6 @@ var (
 	interpreterEnv = []byte("#!/usr/bin/env gonow")
 )
 
-type goEnv struct {
-	gobin, gopath string
-}
-
 func usage() {
 	fmt.Fprintf(os.Stderr, `Tool to run Go source files automatically
 
@@ -46,6 +42,7 @@ Usage:
 func main() {
 	var binaryDir, binaryPath string
 
+	//
 	// === Flags
 	force := flag.Bool("f", false, "force compilation")
 
@@ -55,35 +52,29 @@ func main() {
 	if flag.NArg() == 0 {
 		usage()
 	}
-	// ===
-
-	env := getEnv() // Go variables
 
 	//
 	// === Paths
+	gopath := build.Path[0] // GOROOT
+	gobin := gopath.BinDir()
+
 	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := filepath.Split(scriptPath)
 	ext := filepath.Ext(scriptName)
 
 	// Global directory
-	if env.gopath != "" {
+	if exist(gobin) { // it could be a directory not mounted
 		// Absolute path to calculate its hash.
 		scriptDirAbs, err := filepath.Abs(scriptDir)
 		if err != nil {
 			fatalf("Could not get absolute path: %s\n", err)
 		}
 
-		binaryDir = filepath.Join(
-			env.gopath,
-			"pkg",
-			runtime.GOOS+"_"+runtime.GOARCH,
-			SUBDIR,
-			hash(scriptDirAbs),
-		)
+		binaryDir = filepath.Join(gopath.PkgDir(), SUBDIR, hash(scriptDirAbs))
 	} else {
 		// Local directory
 		// Work in shared filesystems
-		binaryDir = filepath.Join(SUBDIR, runtime.GOOS+"_"+runtime.GOARCH)
+		binaryDir = filepath.Join(SUBDIR, filepath.Base(gopath.PkgDir()))
 	}
 
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
@@ -93,19 +84,16 @@ func main() {
 		binaryPath += ".exe"
 	}
 
-	// * * *
-
 	// Check directory
-	if ok := exist(binaryDir); !ok {
+	if !exist(binaryDir) {
 		if err := os.MkdirAll(binaryDir, 0750); err != nil {
 			fatalf("Could not make directory: %s\n", err)
 		}
 	}
 
-	scriptMtime := getTime(scriptPath)
-
 	// === Run and exit
 	if !*force && exist(binaryPath) {
+		scriptMtime := getTime(scriptPath)
 		binaryMtime := getTime(binaryPath)
 
 		// executable not modified
@@ -133,8 +121,8 @@ func main() {
 		fatalf("%s", err)
 	}
 
-	compiler := filepath.Join(env.gobin, archChar+"g")
-	linker := filepath.Join(env.gobin, archChar+"l")
+	compiler := filepath.Join(gobin, archChar+"g")
+	linker := filepath.Join(gobin, archChar+"l")
 
 	// === Compile source file
 	objectPath := filepath.Join(binaryDir, "_go_."+archChar)

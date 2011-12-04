@@ -63,7 +63,7 @@ func main() {
 	ext := filepath.Ext(scriptName)
 
 	// Global directory
-	if exist(gobin) { // it could be a directory not mounted
+	if exist(gobin) { // "gopath" could be a directory not mounted
 		// Absolute path to calculate its hash.
 		scriptDirAbs, err := filepath.Abs(scriptDir)
 		if err != nil {
@@ -72,8 +72,7 @@ func main() {
 
 		binaryDir = filepath.Join(gopath.PkgDir(), SUBDIR, hash(scriptDirAbs))
 	} else {
-		// Local directory
-		// Work in shared filesystems
+		// Local directory; ready to work in shared filesystems
 		binaryDir = filepath.Join(SUBDIR, filepath.Base(gopath.PkgDir()))
 	}
 
@@ -96,7 +95,7 @@ func main() {
 		scriptMtime := getTime(scriptPath)
 		binaryMtime := getTime(binaryPath)
 
-		// executable not modified
+		// If the script was not modified
 		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
 			runAndExit(binaryPath)
 		}
@@ -137,8 +136,7 @@ func main() {
 	}
 
 	// === Link executable
-	out, err = exec.Command(linker, "-o", binaryPath, objectPath).
-		CombinedOutput()
+	out, err = exec.Command(linker, "-o", binaryPath, objectPath).CombinedOutput()
 	if err != nil {
 		fatalf("Linker failed: %s\n%s", err, out)
 	}

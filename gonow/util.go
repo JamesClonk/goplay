@@ -70,7 +70,7 @@ func getTime(filename string) time.Time {
 // Generates a hash for a file path.
 func hash(filePath string) string {
 	crc := adler32.Checksum([]byte(filePath))
-	return strconv.Uitoa(uint(crc))
+	return strconv.FormatUint(uint64(crc), 10)
 }
 
 // Executes the binary file.

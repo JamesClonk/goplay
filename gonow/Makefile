@@ -6,4 +6,3 @@ GOFILES=\
 	util.go\
 
 include $(GOROOT)/src/Make.cmd
-

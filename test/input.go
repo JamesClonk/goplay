@@ -8,7 +8,6 @@ import (
 	"os"
 )
 
-
 func main() {
 	in := bufio.NewReader(os.Stdin)
 

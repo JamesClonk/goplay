@@ -23,7 +23,7 @@ environment.
 
 ## Installation
 
-	goinstall github.com/kless/GoNow/gonow
+	go get github.com/kless/GoNow/gonow
 
 
 ## Operating instructions

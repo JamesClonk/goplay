@@ -61,7 +61,7 @@ func main() {
 	//
 	// === Paths
 	gopath := build.Path[0] // GOROOT
-	gobin := gopath.BinDir()
+	gobin := filepath.Join(gopath.BinDir(), "tool")
 
 	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := filepath.Split(scriptPath)

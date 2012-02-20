@@ -61,7 +61,7 @@ func main() {
 	//
 	// === Paths
 	gopath := build.Path[0] // GOROOT
-	gobin := filepath.Join(gopath.BinDir(), "tool")
+	gobin := filepath.Join(gopath.BinDir(), "go")
 
 	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := filepath.Split(scriptPath)
@@ -125,12 +125,9 @@ func main() {
 		fatalf("%s", err)
 	}
 
-	compiler := filepath.Join(gobin, archChar+"g")
-	linker := filepath.Join(gobin, archChar+"l")
-
 	// === Compile source file
 	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
-	cmd := exec.Command(compiler, "-o", objectPath, scriptPath)
+	cmd := exec.Command(gobin, "tool", archChar+"g", "-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
 	if hasInterpreter {
@@ -141,7 +138,7 @@ func main() {
 	}
 
 	// === Link executable
-	out, err = exec.Command(linker, "-o", binaryPath, objectPath).CombinedOutput()
+	out, err = exec.Command(gobin, "tool", archChar+"l", "-o", binaryPath, objectPath).CombinedOutput()
 	if err != nil {
 		fatalf("Linker failed: %s\n%s", err, out)
 	}

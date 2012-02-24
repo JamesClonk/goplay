@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -95,7 +96,7 @@ func runAndExit(binary string) {
 
 	// Return the exit status code of the program to run.
 	if msg, ok := err.(*exec.ExitError); ok { // there is error code
-		os.Exit(msg.ExitStatus())
+		os.Exit(msg.Sys().(syscall.WaitStatus).ExitStatus())
 	} else {
 		os.Exit(0)
 	}

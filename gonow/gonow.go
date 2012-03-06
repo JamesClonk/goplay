@@ -60,29 +60,31 @@ func main() {
 
 	//
 	// === Paths
-	gopath := build.Path[0] // GOROOT
-	gobin := filepath.Join(gopath.BinDir(), "go")
+	pkg, err := build.Import("", build.Default.GOROOT, build.FindOnly)
+	if err != nil {
+		fatalf("GOROOT is not set: %s\n", err)
+	}
 
 	scriptPath := flag.Args()[0]
 	scriptDir, scriptName := filepath.Split(scriptPath)
 	ext := filepath.Ext(scriptName)
 
 	// Global directory
-	if exist(gobin) { // "gopath" could be a directory not mounted
+	if exist(pkg.BinDir) { // "GOROOT" could be into a directory not mounted
 		// Absolute path to calculate its hash.
 		scriptDirAbs, err := filepath.Abs(scriptDir)
 		if err != nil {
 			fatalf("Could not get absolute path: %s\n", err)
 		}
 
-		binaryDir = filepath.Join(gopath.PkgDir(), SUBDIR, hash(scriptDirAbs))
+		binaryDir = filepath.Join(pkg.PkgRoot, filepath.Base(build.ToolDir),
+			SUBDIR, hash(scriptDirAbs))
 	} else {
 		// Local directory; ready to work in shared filesystems
-		binaryDir = filepath.Join(SUBDIR, filepath.Base(gopath.PkgDir()))
+		binaryDir = filepath.Join(SUBDIR, filepath.Base(build.ToolDir))
 	}
 
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
-
 	// Windows doesn't like running binaries without the ".exe" extension
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
@@ -127,7 +129,8 @@ func main() {
 
 	// === Compile source file
 	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
-	cmd := exec.Command(gobin, "tool", archChar+"g", "-o", objectPath, scriptPath)
+	cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
+		"-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
 	if hasInterpreter {
@@ -138,7 +141,8 @@ func main() {
 	}
 
 	// === Link executable
-	out, err = exec.Command(gobin, "tool", archChar+"l", "-o", binaryPath, objectPath).CombinedOutput()
+	out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
+		"-o", binaryPath, objectPath).CombinedOutput()
 	if err != nil {
 		fatalf("Linker failed: %s\n%s", err, out)
 	}

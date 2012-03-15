@@ -57,10 +57,8 @@ func commentOut(f *os.File) {
 
 // Checks if exist a file.
 func exist(name string) bool {
-	if _, err := os.Stat(name); err == nil {
-		return true
-	}
-	return false
+	_, err := os.Stat(name)
+	return !os.IsNotExist(err)
 }
 
 // Gets the modification time.

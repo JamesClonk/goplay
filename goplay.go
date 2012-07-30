@@ -108,8 +108,11 @@ func main() {
 			log.Fatalf("Could not get absolute path: %s", err)
 		}
 
+		// generates a hash for the file
+		crc := adler32.Checksum([]byte(scriptDirAbs))
+
 		binaryDir = filepath.Join(pkg.PkgRoot, filepath.Base(build.ToolDir),
-			SUBDIR, hash(scriptDirAbs))
+			SUBDIR, strconv.FormatUint(uint64(crc), 10))
 	} else {
 		// Local directory; ready to work in shared filesystems
 		binaryDir = filepath.Join(SUBDIR, filepath.Base(build.ToolDir))
@@ -147,8 +150,11 @@ func main() {
 	defer file.Close()
 
 	hasInterpreter := checkInterpreter(file)
-	if hasInterpreter {
-		comment(file)
+	if hasInterpreter { // comment interpreter line
+		file.Seek(0, 0)
+		if _, err = file.Write([]byte("//")); err != nil {
+			log.Fatalf("could not comment the line interpreter: %s", err)
+		}
 	}
 
 	// Set toolchain
@@ -163,8 +169,11 @@ func main() {
 		"-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
-	if hasInterpreter {
-		commentOut(file)
+	if hasInterpreter { // comment out interpreter line
+		file.Seek(0, 0)
+		if _, err := file.Write([]byte("#!")); err != nil {
+			log.Fatalf("could not comment out the line interpreter: %s", err)
+		}
 	}
 	if err != nil {
 		log.Fatalf("%s\n%s", cmd.Args, out)
@@ -198,24 +207,6 @@ func checkInterpreter(f *os.File) bool {
 	return bytes.Equal(firstLine, interpreterEnv)
 }
 
-// comment comments the line interpreter.
-func comment(f *os.File) {
-	f.Seek(0, 0)
-
-	if _, err := f.Write([]byte("//")); err != nil {
-		log.Fatalf("could not comment the line interpreter: %s", err)
-	}
-}
-
-// commentOut comments out the line interpreter.
-func commentOut(f *os.File) {
-	f.Seek(0, 0)
-
-	if _, err := f.Write([]byte("#!")); err != nil {
-		log.Fatalf("could not comment out the line interpreter: %s", err)
-	}
-}
-
 // exist checks if exist a file.
 func exist(filename string) bool {
 	_, err := os.Stat(filename)
@@ -229,12 +220,6 @@ func getTime(filename string) time.Time {
 		log.Fatal(err)
 	}
 	return info.ModTime()
-}
-
-// hash generates a hash for a file.
-func hash(filename string) string {
-	crc := adler32.Checksum([]byte(filename))
-	return strconv.FormatUint(uint64(crc), 10)
 }
 
 // RunAndExit executes the binary file.

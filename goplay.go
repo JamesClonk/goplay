@@ -1,54 +1,83 @@
-// Copyright 2010  The "goplay" Authors
+// Copyright 2010 Jonas mg
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// Command goplay allows to use Go like if were a script language.
+//
+// Internally, it compiles and links the Go source file, saving the executable
+// into a global directory whether GOROOT or GOPATH is set else it is saved in
+// the local directory ".go"; finally, it is run. If that executable does not
+// exist or its modified time is different than script's, then it's compiled again.
+//
+// It works into a shared filesystem since it's created a directory for each
+// target environment.
+//
+// It is specially useful for:
+//
+//   Administration issues
+//   Boot init of operating systems
+//   Web developing; by example for the routing
+//   Interfaces of database models
+//
+// You could use "go run" tool for temporary tasks, like testing of code
+// snippets and during learning.
+//
+// Usage
+//
+//   goplay file.go
+//
+// To run it using its name, insert in the first line of the Go file:
+//
+//   #!/usr/bin/env goplay
+//
+// and set its executable bit:
+//
+//   chmod +x file.go
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"go/build"
+	"hash/adler32"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"syscall"
+	"time"
 )
 
 const SUBDIR = ".go" // To install compiled programs
 
 var (
-	//interpreter    = []byte("#!/usr/bin/gonow")
-	interpreterEnv = []byte("#!/usr/bin/env gonow")
+	//interpreter    = []byte("#!/usr/bin/goplay")
+	interpreterEnv = []byte("#!/usr/bin/env goplay")
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Tool to run Go source files automatically
+	fmt.Fprintf(os.Stderr, `Run Go source file
 
 Usage:
-	+ To run it directly, insert "#!/usr/bin/env gonow" in the first line.
+	+ To run it directly, insert "#!/usr/bin/env goplay" in the first line.
 	+ gonow [-f] file.go
 
 `)
 	flag.PrintDefaults()
-	os.Exit(ERROR)
+	os.Exit(2)
 }
 
 func main() {
 	var binaryDir, binaryPath string
 
-	//
-	// === Flags
+	// == Flags
 	force := flag.Bool("f", false, "force compilation")
 
 	flag.Usage = usage
@@ -58,11 +87,13 @@ func main() {
 		usage()
 	}
 
-	//
-	// === Paths
+	log.SetFlags(0)
+	log.SetPrefix("ERROR: ")
+
+	// == Paths
 	pkg, err := build.Import("", build.Default.GOROOT, build.FindOnly)
 	if err != nil {
-		fatalf("GOROOT is not set: %s\n", err)
+		log.Fatalf("GOROOT is not set: %s", err)
 	}
 
 	scriptPath := flag.Args()[0]
@@ -74,7 +105,7 @@ func main() {
 		// Absolute path to calculate its hash.
 		scriptDirAbs, err := filepath.Abs(scriptDir)
 		if err != nil {
-			fatalf("Could not get absolute path: %s\n", err)
+			log.Fatalf("Could not get absolute path: %s", err)
 		}
 
 		binaryDir = filepath.Join(pkg.PkgRoot, filepath.Base(build.ToolDir),
@@ -85,7 +116,7 @@ func main() {
 	}
 
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
-	// Windows doesn't like running binaries without the ".exe" extension
+	// Windows does not like running binaries without the ".exe" extension
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
 	}
@@ -93,26 +124,25 @@ func main() {
 	// Check directory
 	if !exist(binaryDir) {
 		if err := os.MkdirAll(binaryDir, 0750); err != nil {
-			fatalf("Could not make directory: %s\n", err)
+			log.Fatalf("Could not make directory: %s", err)
 		}
 	}
 
-	// === Run and exit
+	// == Run and exit
 	if !*force && exist(binaryPath) {
 		scriptMtime := getTime(scriptPath)
 		binaryMtime := getTime(binaryPath)
 
 		// If the script was not modified
 		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
-			runAndExit(binaryPath)
+			RunAndExit(binaryPath)
 		}
 	}
 
-	//
-	// === Compile and link
+	// == Compile and link
 	file, err := os.OpenFile(scriptPath, os.O_RDWR, 0)
 	if err != nil {
-		fatalf("Could not open file: %s\n", err)
+		log.Fatalf("Could not open file: %s", err)
 	}
 	defer file.Close()
 
@@ -121,13 +151,13 @@ func main() {
 		comment(file)
 	}
 
-	// === Set toolchain
+	// Set toolchain
 	archChar, err := build.ArchChar(runtime.GOARCH)
 	if err != nil {
-		fatalf("%s", err)
+		log.Fatal(err)
 	}
 
-	// === Compile source file
+	// == Compile source file
 	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
 	cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
 		"-o", objectPath, scriptPath)
@@ -137,30 +167,94 @@ func main() {
 		commentOut(file)
 	}
 	if err != nil {
-		fatalf("%s\n%s", cmd.Args, out)
+		log.Fatalf("%s\n%s", cmd.Args, out)
 	}
 
-	// === Link executable
+	// == Link executable
 	out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
 		"-o", binaryPath, objectPath).CombinedOutput()
 	if err != nil {
-		fatalf("Linker failed: %s\n%s", err, out)
+		log.Fatalf("Linker failed: %s\n%s", err, out)
 	}
 
-	// === Cleaning
+	// == Cleaning
 	if err := os.Remove(objectPath); err != nil {
-		fatalf("Could not remove object file: %s\n", err)
+		log.Fatalf("Could not remove object file: %s", err)
 	}
 
-	runAndExit(binaryPath)
+	RunAndExit(binaryPath)
 }
 
-//
-// === Error
+// == Utility
 
-const ERROR = 1
+// checkInterpreter checks if the file has the interpreter line.
+func checkInterpreter(f *os.File) bool {
+	buf := bufio.NewReader(f)
 
-func fatalf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, "gonow: "+format, a...)
-	os.Exit(ERROR)
+	firstLine, _, err := buf.ReadLine()
+	if err != nil {
+		log.Fatalf("could not read the first line: %s", err)
+	}
+	return bytes.Equal(firstLine, interpreterEnv)
+}
+
+// comment comments the line interpreter.
+func comment(f *os.File) {
+	f.Seek(0, 0)
+
+	if _, err := f.Write([]byte("//")); err != nil {
+		log.Fatalf("could not comment the line interpreter: %s", err)
+	}
+}
+
+// commentOut comments out the line interpreter.
+func commentOut(f *os.File) {
+	f.Seek(0, 0)
+
+	if _, err := f.Write([]byte("#!")); err != nil {
+		log.Fatalf("could not comment out the line interpreter: %s", err)
+	}
+}
+
+// exist checks if exist a file.
+func exist(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
+}
+
+// getTime gets the modification time.
+func getTime(filename string) time.Time {
+	info, err := os.Stat(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return info.ModTime()
+}
+
+// hash generates a hash for a file.
+func hash(filename string) string {
+	crc := adler32.Checksum([]byte(filename))
+	return strconv.FormatUint(uint64(crc), 10)
+}
+
+// RunAndExit executes the binary file.
+func RunAndExit(binary string) {
+	cmd := exec.Command(binary)
+	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
+	if err != nil {
+		log.Fatalf("could not execute: %q\n%s", cmd.Args, err)
+	}
+	err = cmd.Wait()
+
+	// Return the exit status code of the program to run.
+	if msg, ok := err.(*exec.ExitError); ok { // there is error code
+		os.Exit(msg.Sys().(syscall.WaitStatus).ExitStatus())
+	} else {
+		os.Exit(0)
+	}
 }

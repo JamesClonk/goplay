@@ -1,6 +1,6 @@
 ###### Notice
 
-*This file documents the changes in **goplay** versions that are listed below.*
+*This file documents the changes in **Goplay** versions that are listed below.*
 
 *Items should be added to this file as:*
 

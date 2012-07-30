@@ -8,7 +8,7 @@
 //
 // Internally, it compiles and links the Go source file, saving the executable
 // into a global directory whether GOROOT or GOPATH is set else it is saved in
-// the local directory ".go"; finally, it is run. If that executable does not
+// the local directory ".goplay"; finally, it is run. If that executable does not
 // exist or its modified time is different than script's, then it's compiled again.
 //
 // It works into a shared filesystem since it's created a directory for each
@@ -55,7 +55,7 @@ import (
 	"time"
 )
 
-const SUBDIR = ".go" // To install compiled programs
+const SUBDIR = ".goplay" // where to store compiled programs
 
 var (
 	//interpreter    = []byte("#!/usr/bin/goplay")

@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// Command goplay allows to use Go like if were a script language.
+// Command goplay enables to use Go like if were a script language.
 //
 // Internally, it compiles and links the Go source file, saving the executable
 // into a global directory whether GOROOT or GOPATH is set else it is saved in

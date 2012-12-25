@@ -2,7 +2,7 @@ Goplay
 ======
 Go like script language.
 
-[Documentation online](http://go.pkgdoc.org/github.com/kless/goplay)
+[Documentation online](http://godoc.org/github.com/kless/goplay)
 
 ## Installation
 

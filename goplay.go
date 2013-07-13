@@ -147,7 +147,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not open file: %s", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err = file.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 
 	hasInterpreter := checkInterpreter(file)
 	if hasInterpreter { // comment interpreter line

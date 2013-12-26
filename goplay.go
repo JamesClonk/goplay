@@ -227,7 +227,7 @@ func getTime(filename string) time.Time {
 
 // RunAndExit executes the binary file.
 func RunAndExit(binary string) {
-	cmd := exec.Command(binary)
+	cmd := exec.Command(binary, flag.Args()[1:]...)
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

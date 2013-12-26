@@ -58,7 +58,6 @@ import (
 const SUBDIR = ".goplay" // where to store compiled programs
 
 var (
-	//interpreter    = []byte("#!/usr/bin/goplay")
 	interpreterEnv = []byte("#!/usr/bin/env goplay")
 )
 
@@ -67,7 +66,7 @@ func usage() {
 
 Usage:
 	+ To run it directly, insert "#!/usr/bin/env goplay" in the first line.
-	+ gonow [-f] file.go
+	+ goplay [-f] file.go
 
 `)
 	flag.PrintDefaults()
@@ -91,9 +90,9 @@ func main() {
 	log.SetPrefix("ERROR: ")
 
 	// == Paths
-	pkg, err := build.Import("", build.Default.GOROOT, build.FindOnly)
+	pkg, err := build.Import("./", build.Default.GOROOT, build.FindOnly)
 	if err != nil {
-		log.Fatalf("GOROOT is not set: %s", err)
+		log.Fatal(err)
 	}
 
 	scriptPath := flag.Args()[0]

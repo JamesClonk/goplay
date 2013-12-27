@@ -14,32 +14,69 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 )
 
-func Example() {
+func Test_Setup(t *testing.T) {
 	if err := os.Chdir("testdata"); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
+}
 
+// Output:
+// The night is all magic
+func Test_Output(t *testing.T) {
 	out, err := exec.Command(EXEC, "output.go").Output()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	fmt.Print(string(out))
 
+	output := string(out)
+	fmt.Print(output)
+	expected(t, "output.go", output, "The night is all magic\n")
+}
+
+// Output:
+// (Write and press Enter to finish)
+// and the goblin invites you to dream
+func Test_Input(t *testing.T) {
 	var bufOut bytes.Buffer
 	cmd := exec.Command("./input.go")
 	cmd.Stdin = strings.NewReader("and the goblin invites you to dream\n")
 	cmd.Stdout = &bufOut
-	if err = cmd.Run(); err != nil {
-		log.Fatal(err)
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
 	}
-	fmt.Print(bufOut.String())
 
-	// Output:
-	// The night is all magic
-	// (Write and press Enter to finish)
-	// and the goblin invites you to dream
+	output := bufOut.String()
+	fmt.Print(output)
+	expected(t, "input.go", output, "(Write and press Enter to finish)\nand the goblin invites you to dream\n")
+}
+
+func Test_Parameters(t *testing.T) {
+	out, err := exec.Command("./parameters.go").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// no parameters
+	expected(t, "parameters.go", string(out), "Parameters: 0\n")
+
+	// ---------------------------------------------------------------
+
+	out, err = exec.Command("./parameters.go", "-f", "One", "Two").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 3 parameters
+	expected(t, "parameters.go", string(out), "Parameters: 3\n-f\nOne\nTwo\n")
+}
+
+func expected(t *testing.T, test string, output string, expected string) {
+	if output != expected {
+		t.Errorf("output of %s not as expected, was [%s], but should be [%s]", test, output, expected)
+	}
 }
 
 // * * *

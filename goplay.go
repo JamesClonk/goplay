@@ -147,8 +147,8 @@ func main() {
 		log.Fatalf("Could not open file: %s", err)
 	}
 	defer func() {
-		if err = file.Close(); err != nil {
-			log.Print(err)
+		if err := file.Close(); err != nil {
+			log.Fatalf("Could not close file: %s", err)
 		}
 	}()
 

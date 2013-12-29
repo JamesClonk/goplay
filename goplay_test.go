@@ -8,10 +8,55 @@ package main
 
 import (
 	"bytes"
+	"go/build"
+	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func init() {
+	// $GOPATH/bin should be part of $PATH
+	path := os.Getenv("PATH")
+	gopathBin := build.Default.GOPATH + "/bin"
+	if !strings.Contains(path, gopathBin) {
+		log.Fatalf("PATH does not contain GOPATH/bin\n$GOPATH/bin: [%s]\n$PATH: [%s]\n", gopathBin, path)
+	}
+
+	// Compile and install goplay in current $GOPATH/bin
+	if goplayBin, err := exec.LookPath("goplay"); err != nil {
+		if err.(*exec.Error).Err == exec.ErrNotFound {
+			install()
+		} else {
+			log.Fatal(err)
+		}
+	} else {
+		srcTime := getTime("goplay.go")
+		binTime := getTime(goplayBin)
+		if srcTime.After(binTime) {
+			install()
+		}
+	}
+
+	// Change into "testdata" directory
+	if pwd, err := os.Getwd(); err != nil {
+		log.Fatal(err)
+	} else if filepath.Base(pwd) != "testdata" {
+		if err := os.Chdir("testdata"); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func install() {
+	if err := exec.Command("go", "install").Run(); err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("Installed goplay...")
+	}
+}
 
 func TestInput(t *testing.T) {
 	var buffer bytes.Buffer
@@ -29,7 +74,7 @@ func TestParameters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// no parameters
+	// No parameters
 	expected(t, "parameters.go", string(out), "Parameters: 0\n")
 
 	// ---------------------------------------------------------------

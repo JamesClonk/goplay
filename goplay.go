@@ -50,8 +50,8 @@ import (
 const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
-	forceCompile = false     // force compilation flag
-	goplayDir    = ".goplay" // where to store the compiled programs
+	forceCompile = false     // Force compilation flag
+	goplayDir    = ".goplay" // Where to store the compiled programs
 )
 
 func usage() {
@@ -121,7 +121,7 @@ func main() {
 	}()
 
 	hasHashbang := checkForHashbang(file)
-	if hasHashbang { // comment hashbang line
+	if hasHashbang { // Comment hashbang line
 		file.Seek(0, 0)
 		if _, err = file.Write([]byte("//")); err != nil {
 			log.Fatalf("Could not comment the hashbang line: %s", err)
@@ -140,7 +140,7 @@ func main() {
 		"-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
-	if hasHashbang { // restore hashbang line
+	if hasHashbang { // Restore hashbang line
 		file.Seek(0, 0)
 		if _, err := file.Write([]byte("#!")); err != nil {
 			log.Fatalf("Could not restore the hashbang line: %s", err)
@@ -165,7 +165,7 @@ func main() {
 	RunAndExit(binaryPath)
 }
 
-// checkForHashbang checks if the file has the goplay hashbang.
+// checkForHashbang checks if the file has the goplay hashbang
 func checkForHashbang(f *os.File) bool {
 	buf := bufio.NewReader(f)
 
@@ -176,13 +176,13 @@ func checkForHashbang(f *os.File) bool {
 	return bytes.Equal(firstLine, []byte(HASHBANG))
 }
 
-// exist checks if the file exists.
+// exist checks if the file exists
 func exist(filename string) bool {
 	_, err := os.Stat(filename)
 	return !os.IsNotExist(err)
 }
 
-// getTime gets the modification time.
+// getTime gets the modification time
 func getTime(filename string) time.Time {
 	info, err := os.Stat(filename)
 	if err != nil {
@@ -191,7 +191,7 @@ func getTime(filename string) time.Time {
 	return info.ModTime()
 }
 
-// RunAndExit executes the binary.
+// RunAndExit executes the binary
 func RunAndExit(binary string) {
 	cmd := exec.Command(binary, flag.Args()[1:]...)
 	cmd.Env = os.Environ()
@@ -205,8 +205,8 @@ func RunAndExit(binary string) {
 	}
 	err = cmd.Wait()
 
-	// Return the exit status code of the program to run.
-	if msg, ok := err.(*exec.ExitError); ok { // there is an error code
+	// Return the exit status code of the program to run
+	if msg, ok := err.(*exec.ExitError); ok { // There is an error code
 		os.Exit(msg.Sys().(syscall.WaitStatus).ExitStatus())
 	} else {
 		os.Exit(0)

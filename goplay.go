@@ -51,7 +51,7 @@ const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
 	forceCompile  = flag.Bool("f", false, "force compilation") // Force compilation flag
-	completeBuild = flag.Bool("b", false, "complete build")    // Build complete binary out of current directory
+	completeBuild = flag.Bool("b", false, "complete build")    // Build complete binary out of script directory
 	goplayDir     = ".goplay"                                  // Where to store the compiled programs
 	goplayRc      = "goplayrc"                                 // goplay configuration filename
 )
@@ -81,8 +81,7 @@ func main() {
 	}
 
 	// Read configuration from /etc/goplayrc, ~/.goplayrc
-	separator := string(os.PathSeparator)
-	ReadConfigurationFile(filepath.Join(separator, "etc", goplayRc))
+	ReadConfigurationFile(filepath.Join(string(os.PathSeparator), "etc", goplayRc))
 	ReadConfigurationFile(filepath.Join("~", "."+goplayRc))
 
 	// Paths
@@ -147,15 +146,16 @@ func main() {
 				if err := os.Chdir(scriptDir); err != nil {
 					log.Fatal(err)
 				}
+				defer func() {
+					// Go back to previous directory
+					if err := os.Chdir(prevDir); err != nil {
+						log.Fatal(err)
+					}
+				}()
 			}
 
 			// Build current/scripts directory
 			if err := exec.Command("go", "build", "-o", binaryPath).Run(); err != nil {
-				log.Fatal(err)
-			}
-
-			// Go back to previous directory
-			if err := os.Chdir(prevDir); err != nil {
 				log.Fatal(err)
 			}
 
@@ -254,7 +254,5 @@ func RunAndExit(binary string) {
 	// Return the exit status code of the program to run
 	if msg, ok := err.(*exec.ExitError); ok { // There is an error code
 		os.Exit(msg.Sys().(syscall.WaitStatus).ExitStatus())
-	} else {
-		os.Exit(0)
 	}
 }

@@ -192,11 +192,6 @@ func main() {
 		if hasHashbang {
 			CommentHashbang(file, "#!")
 		}
-
-		// Force closing of source file now (before os.Exit call)
-		if err := file.Close(); err != nil {
-			log.Fatalf("Could not close file: %s", err)
-		}
 	}
 
 	RunAndExit(binaryPath)

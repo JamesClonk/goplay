@@ -2,7 +2,7 @@ Goplay
 ======
 Use Go like a scripting language.
 
-[![GoDoc](https://godoc.org/github.com/JamesClonk/goplay?status.png)](https://godoc.org/github.com/JamesClonk/goplay)
+[![GoDoc](https://godoc.org/github.com/JamesClonk/goplay?status.png)](https://godoc.org/github.com/JamesClonk/goplay) [![Build Status](https://travis-ci.org/JamesClonk/goplay.png?branch=master)](https://travis-ci.org/JamesClonk/goplay)
 
 ## Installation
 

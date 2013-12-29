@@ -63,7 +63,7 @@ func init() {
 		}
 	}
 
-	if err := os.Chdir("test"); err != nil {
+	if err := os.Chdir("testdata"); err != nil {
 		log.Fatal(err)
 	}
 }

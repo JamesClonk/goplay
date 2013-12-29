@@ -1,10 +1,11 @@
-// Copyright 2010 Jonas mg
-//
 // This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// License, v. 2.0. If a copy of the MPL was not distributed with this file,
+// You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2010 Jonas mg
+// Copyright (c) 2013 JamesClonk
 
-// Command goplay enables to use Go like if were a script language.
+// The 'goplay' command enables you to use Go as if it were an interpreted scripting language.
 //
 // Internally, it compiles and links the Go source file, saving the executable
 // into a global directory whether GOROOT or GOPATH is set else it is saved in
@@ -14,25 +15,20 @@
 // It works into a shared filesystem since it's created a directory for each
 // target environment.
 //
-// It is specially useful for:
+// You can run any Go file by calling it with goplay
 //
-//   Administration issues
-//   Boot init of operating systems
-//   Web developing; by example for the routing
-//   Interfaces of database models
+// 	goplay example.go
 //
-// You could use "go run" tool for temporary tasks, like testing of code
-// snippets and during learning.
+// This is similar to using plain "go run example.go".
+// The real use of goplay is the ability to use it as a HASHBANG and run any Go files by itself
 //
-// Usage
+// 	./example.go
 //
-//   goplay file.go
-//
-// To run it using its name, insert in the first line of the Go file:
+// For this to work, you have to insert the following HASHBANG as the first line in the Go file
 //
 //   #!/usr/bin/env goplay
 //
-// and set its executable bit:
+// and set it to be executable
 //
 //   chmod +x file.go
 package main
@@ -43,30 +39,29 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
-	"hash/adler32"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
 
-const SUBDIR = ".goplay" // where to store compiled programs
+const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
-	interpreterEnv = []byte("#!/usr/bin/env goplay")
+	forceCompile = false     // force compilation flag
+	goplayDir    = ".goplay" // where to store the compiled programs
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `Run Go source file
 
 Usage:
-	+ To run it directly, insert "#!/usr/bin/env goplay" in the first line.
-	+ goplay [-f] file.go
+	+ To run it directly, insert hashbang "#!/usr/bin/env goplay" as the first line.
+	+ goplay [-f] <go-source-file>
 
 `)
 	flag.PrintDefaults()
@@ -76,8 +71,8 @@ Usage:
 func main() {
 	var binaryDir, binaryPath string
 
-	// == Flags
-	force := flag.Bool("f", false, "force compilation")
+	// Flags
+	forceCompile = *flag.Bool("f", false, "force compilation")
 
 	flag.Usage = usage
 	flag.Parse()
@@ -86,38 +81,15 @@ func main() {
 		usage()
 	}
 
-	log.SetFlags(0)
-	log.SetPrefix("ERROR: ")
-
-	// == Paths
-	pkg, err := build.Import("./", build.Default.GOROOT, build.FindOnly)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	// Paths
 	scriptPath := flag.Args()[0]
-	scriptDir, scriptName := filepath.Split(scriptPath)
+	_, scriptName := filepath.Split(scriptPath)
 	ext := filepath.Ext(scriptName)
 
-	// Global directory
-	if exist(pkg.BinDir) { // "GOROOT" could be into a directory not mounted
-		// Absolute path to calculate its hash.
-		scriptDirAbs, err := filepath.Abs(scriptDir)
-		if err != nil {
-			log.Fatalf("Could not get absolute path: %s", err)
-		}
-
-		// generates a hash for the file
-		crc := adler32.Checksum([]byte(scriptDirAbs))
-
-		binaryDir = filepath.Join(pkg.PkgRoot, filepath.Base(build.ToolDir),
-			SUBDIR, strconv.FormatUint(uint64(crc), 10))
-	} else {
-		// Local directory; ready to work in shared filesystems
-		binaryDir = filepath.Join(SUBDIR, filepath.Base(build.ToolDir))
-	}
-
+	// Local directory; ready to work in shared filesystems
+	binaryDir = filepath.Join(goplayDir, filepath.Base(build.ToolDir))
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
+
 	// Windows does not like running binaries without the ".exe" extension
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
@@ -130,18 +102,16 @@ func main() {
 		}
 	}
 
-	// == Run and exit
-	if !*force && exist(binaryPath) {
+	// Run and exit if no forceCompile compilation is set and the file has not been modified
+	if !forceCompile && exist(binaryPath) {
 		scriptMtime := getTime(scriptPath)
 		binaryMtime := getTime(binaryPath)
-
-		// If the script was not modified
 		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
 			RunAndExit(binaryPath)
 		}
 	}
 
-	// == Compile and link
+	// Compile and link
 	file, err := os.OpenFile(scriptPath, os.O_RDWR, 0)
 	if err != nil {
 		log.Fatalf("Could not open file: %s", err)
@@ -152,11 +122,11 @@ func main() {
 		}
 	}()
 
-	hasInterpreter := checkInterpreter(file)
-	if hasInterpreter { // comment interpreter line
+	hasHashbang := checkForHashbang(file)
+	if hasHashbang { // comment hashbang line
 		file.Seek(0, 0)
 		if _, err = file.Write([]byte("//")); err != nil {
-			log.Fatalf("could not comment the line interpreter: %s", err)
+			log.Fatalf("Could not comment the hashbang line: %s", err)
 		}
 	}
 
@@ -166,30 +136,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// == Compile source file
+	// Compile source file
 	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
 	cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
 		"-o", objectPath, scriptPath)
 	out, err := cmd.CombinedOutput()
 
-	if hasInterpreter { // comment out interpreter line
+	if hasHashbang { // restore hashbang line
 		file.Seek(0, 0)
 		if _, err := file.Write([]byte("#!")); err != nil {
-			log.Fatalf("could not comment out the line interpreter: %s", err)
+			log.Fatalf("Could not restore the hashbang line: %s", err)
 		}
 	}
 	if err != nil {
 		log.Fatalf("%s\n%s", cmd.Args, out)
 	}
 
-	// == Link executable
+	// Link executable
 	out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
 		"-o", binaryPath, objectPath).CombinedOutput()
 	if err != nil {
 		log.Fatalf("Linker failed: %s\n%s", err, out)
 	}
 
-	// == Cleaning
+	// Cleaning
 	if err := os.Remove(objectPath); err != nil {
 		log.Fatalf("Could not remove object file: %s", err)
 	}
@@ -197,20 +167,18 @@ func main() {
 	RunAndExit(binaryPath)
 }
 
-// == Utility
-
-// checkInterpreter checks if the file has the interpreter line.
-func checkInterpreter(f *os.File) bool {
+// checkForHashbang checks if the file has the goplay hashbang.
+func checkForHashbang(f *os.File) bool {
 	buf := bufio.NewReader(f)
 
 	firstLine, _, err := buf.ReadLine()
 	if err != nil {
-		log.Fatalf("could not read the first line: %s", err)
+		log.Fatalf("Could not read the first line: %s", err)
 	}
-	return bytes.Equal(firstLine, interpreterEnv)
+	return bytes.Equal(firstLine, []byte(HASHBANG))
 }
 
-// exist checks if exist a file.
+// exist checks if the file exists.
 func exist(filename string) bool {
 	_, err := os.Stat(filename)
 	return !os.IsNotExist(err)
@@ -225,7 +193,7 @@ func getTime(filename string) time.Time {
 	return info.ModTime()
 }
 
-// RunAndExit executes the binary file.
+// RunAndExit executes the binary.
 func RunAndExit(binary string) {
 	cmd := exec.Command(binary, flag.Args()[1:]...)
 	cmd.Env = os.Environ()
@@ -235,12 +203,12 @@ func RunAndExit(binary string) {
 
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("could not execute: %q\n%s", cmd.Args, err)
+		log.Fatalf("Could not execute: %q\n%s", cmd.Args, err)
 	}
 	err = cmd.Wait()
 
 	// Return the exit status code of the program to run.
-	if msg, ok := err.(*exec.ExitError); ok { // there is error code
+	if msg, ok := err.(*exec.ExitError); ok { // there is an error code
 		os.Exit(msg.Sys().(syscall.WaitStatus).ExitStatus())
 	} else {
 		os.Exit(0)

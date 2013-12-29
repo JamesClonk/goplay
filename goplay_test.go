@@ -1,8 +1,8 @@
-// Copyright 2012 Jonas mg
-//
 // This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// License, v. 2.0. If a copy of the MPL was not distributed with this file,
+// You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2013 JamesClonk
 
 package main
 
@@ -14,14 +14,14 @@ import (
 )
 
 func TestInput(t *testing.T) {
-	var bufOut bytes.Buffer
+	var buffer bytes.Buffer
 	cmd := exec.Command("./input.go")
 	cmd.Stdin = strings.NewReader("Hello, World!\n")
-	cmd.Stdout = &bufOut
+	cmd.Stdout = &buffer
 	if err := cmd.Run(); err != nil {
 		t.Fatal(err)
 	}
-	expected(t, "input.go", bufOut.String(), "(Write and press Enter to finish)\nHello, World!\n")
+	expected(t, "input.go", buffer.String(), "(Write and press Enter to finish)\nHello, World!\n")
 }
 
 func TestParameters(t *testing.T) {

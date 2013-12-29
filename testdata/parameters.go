@@ -1,4 +1,4 @@
-///usr/bin/env goplay
+#!/usr/bin/env goplay
 
 package main
 

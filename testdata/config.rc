@@ -4,5 +4,5 @@ ForceCompile Yes
 # Use "go build" for building complete binary out of script directory
 Complete_Build No way!
 
-# Goplay subdirectory for storing created binary files
+# Goplay directory for storing created binary files
 goplay_DIRECTORY .goplay/test

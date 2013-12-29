@@ -16,7 +16,7 @@ ForceCompile No
 #  CompleteBuild No
 CompleteBuild No
 
-# Goplay subdirectory for storing created binary files
+# Goplay directory for storing created binary files
 #
 # Example:
 #  GoplayDirectory /tmp/.goplay_bin

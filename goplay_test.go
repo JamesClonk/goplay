@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"go/build"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func init() {
@@ -33,9 +35,7 @@ func init() {
 			log.Fatal(err)
 		}
 	} else {
-		srcTime := getTime("goplay.go")
-		binTime := getTime(goplayBin)
-		if srcTime.After(binTime) {
+		if GetTime("goplay.go").After(GetTime(goplayBin)) {
 			install()
 		}
 	}
@@ -55,6 +55,109 @@ func install() {
 		log.Fatal(err)
 	} else {
 		log.Println("Installed goplay...")
+	}
+}
+
+func createFile(t *testing.T, filename string) {
+	_, err := os.Create(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func removeFile(t *testing.T, filename string) {
+	if err := os.Remove(filename); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func expected(t *testing.T, test string, output string, expected string) {
+	if output != expected {
+		t.Errorf("output of %s not as expected, was [%s], but should be [%s]", test, output, expected)
+	}
+}
+
+func TestCheckForHashbang(t *testing.T) {
+	filenameA := "TestCheckForHashbang_A.test"
+	filenameB := "TestCheckForHashbang_B.test"
+
+	createFile(t, filenameA)
+	defer removeFile(t, filenameA)
+
+	createFile(t, filenameB)
+	defer removeFile(t, filenameB)
+
+	fileA, err := os.OpenFile(filenameA, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("Could not open file: %s", err)
+	}
+	defer fileA.Close()
+	writer := bufio.NewWriter(fileA)
+	if _, err = writer.WriteString("#!/usr/bin/env goplay\n"); err != nil {
+		t.Fatalf("Could not write the hashbang line: %s", err)
+	}
+	writer.Flush()
+	fileA.Close()
+
+	fileA, err = os.OpenFile(filenameA, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("Could not open file: %s", err)
+	}
+	defer fileA.Close()
+
+	if !CheckForHashbang(fileA) {
+		t.Fatal("Hashbang not found")
+	}
+
+	fileB, err := os.OpenFile(filenameB, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("Could not open file: %s", err)
+	}
+	defer fileB.Close()
+	writer = bufio.NewWriter(fileB)
+	if _, err = writer.WriteString("#!/usr/bin/perl"); err != nil {
+		t.Fatalf("Could not write the hashbang line: %s", err)
+	}
+	writer.Flush()
+	fileB.Close()
+
+	fileB, err = os.OpenFile(filenameB, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("Could not open file: %s", err)
+	}
+	defer fileB.Close()
+
+	if CheckForHashbang(fileB) {
+		t.Fatal("Hashbang found")
+	}
+}
+
+func TestExist(t *testing.T) {
+	filename := "TestExist.test"
+
+	createFile(t, filename)
+	defer removeFile(t, filename)
+
+	if !Exist(filename) {
+		t.Errorf("File does not exist: [%s] ", filename)
+	}
+}
+
+func TestGetTime(t *testing.T) {
+	filenameA := "TestGetTime_A.test"
+	filenameB := "TestGetTime_B.test"
+
+	createFile(t, filenameA)
+	defer removeFile(t, filenameA)
+
+	// Sleep inbetween
+	time.Sleep(11 * time.Millisecond)
+
+	createFile(t, filenameB)
+	defer removeFile(t, filenameB)
+
+	if !GetTime(filenameA).Before(GetTime(filenameB)) {
+		t.Errorf("ModTime of [%s] should be older than [%s]", filenameA, filenameB)
 	}
 }
 
@@ -85,10 +188,4 @@ func TestParameters(t *testing.T) {
 	}
 	// 3 parameters
 	expected(t, "parameters.go", string(out), "Parameters: 3\n-f\nOne\nTwo\n")
-}
-
-func expected(t *testing.T, test string, output string, expected string) {
-	if output != expected {
-		t.Errorf("output of %s not as expected, was [%s], but should be [%s]", test, output, expected)
-	}
 }

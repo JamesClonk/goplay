@@ -17,11 +17,11 @@
 // 	goplay example.go
 //
 // This is similar to using plain "go run example.go".
-// The real use of goplay is the ability to use it as a HASHBANG and run any Go files by itself
+// The real use of goplay is the ability to use it as a hashbang and run any Go files by itself
 //
 // 	./example.go
 //
-// For this to work, you have to insert the following HASHBANG as the first line in the Go file
+// For this to work, you have to insert the following hashbang as the first line in the Go file
 //
 //   #!/usr/bin/env goplay
 //
@@ -50,8 +50,9 @@ import (
 const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
-	forceCompile = false     // Force compilation flag
-	goplayDir    = ".goplay" // Where to store the compiled programs
+	forceCompile = false      // Force compilation flag
+	goplayDir    = ".goplay"  // Where to store the compiled programs
+	goplayRc     = "goplayrc" // goplay configuration filename
 )
 
 func usage() {
@@ -79,6 +80,10 @@ func main() {
 		usage()
 	}
 
+	// Read configuration from /etc/goplayrc, ~/.goplayrc
+	ReadConfigurationFile("/etc/" + goplayRc)
+	ReadConfigurationFile("~/." + goplayRc)
+
 	// Paths
 	scriptPath := flag.Args()[0]
 	_, scriptName := filepath.Split(scriptPath)
@@ -94,16 +99,16 @@ func main() {
 	}
 
 	// Check directory
-	if !exist(binaryDir) {
+	if !Exist(binaryDir) {
 		if err := os.MkdirAll(binaryDir, 0750); err != nil {
 			log.Fatalf("Could not make directory: %s", err)
 		}
 	}
 
 	// Run and exit if no forceCompile compilation is set and the file has not been modified
-	if !forceCompile && exist(binaryPath) {
-		scriptMtime := getTime(scriptPath)
-		binaryMtime := getTime(binaryPath)
+	if !forceCompile && Exist(binaryPath) {
+		scriptMtime := GetTime(scriptPath)
+		binaryMtime := GetTime(binaryPath)
 		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
 			RunAndExit(binaryPath)
 		}
@@ -120,7 +125,7 @@ func main() {
 		}
 	}()
 
-	hasHashbang := checkForHashbang(file)
+	hasHashbang := CheckForHashbang(file)
 	if hasHashbang { // Comment hashbang line
 		file.Seek(0, 0)
 		if _, err = file.Write([]byte("//")); err != nil {
@@ -166,7 +171,7 @@ func main() {
 }
 
 // checkForHashbang checks if the file has the goplay hashbang
-func checkForHashbang(f *os.File) bool {
+func CheckForHashbang(f *os.File) bool {
 	buf := bufio.NewReader(f)
 
 	firstLine, _, err := buf.ReadLine()
@@ -177,13 +182,13 @@ func checkForHashbang(f *os.File) bool {
 }
 
 // exist checks if the file exists
-func exist(filename string) bool {
+func Exist(filename string) bool {
 	_, err := os.Stat(filename)
 	return !os.IsNotExist(err)
 }
 
 // getTime gets the modification time
-func getTime(filename string) time.Time {
+func GetTime(filename string) time.Time {
 	info, err := os.Stat(filename)
 	if err != nil {
 		log.Fatal(err)

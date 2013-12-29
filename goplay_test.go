@@ -7,7 +7,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"go/build"
 	"log"
@@ -22,7 +21,7 @@ import (
 func init() {
 	// $GOPATH/bin should be part of $PATH
 	path := os.Getenv("PATH")
-	gopathBin := build.Default.GOPATH + "/bin"
+	gopathBin := filepath.Join(build.Default.GOPATH, "bin")
 	if !strings.Contains(path, gopathBin) {
 		log.Fatalf("PATH does not contain GOPATH/bin\n$GOPATH/bin: [%s]\n$PATH: [%s]\n", gopathBin, path)
 	}
@@ -58,11 +57,12 @@ func install() {
 	}
 }
 
-func createFile(t *testing.T, filename string) {
-	_, err := os.Create(filename)
+func createFile(t *testing.T, filename string) *os.File {
+	file, err := os.Create(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return file
 }
 
 func removeFile(t *testing.T, filename string) {
@@ -77,69 +77,60 @@ func expected(t *testing.T, test string, output string, expected string) {
 	}
 }
 
+func hashbangCheck(t *testing.T, filename string) bool {
+	file, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("Could not open file: %s", err)
+	}
+	defer file.Close()
+
+	return CheckForHashbang(file)
+}
+
 func TestCheckForHashbang(t *testing.T) {
-	filenameA := "TestCheckForHashbang_A.test"
-	filenameB := "TestCheckForHashbang_B.test"
+	// output.go does not contain a hashbang
+	if hashbangCheck(t, "output.go") {
+		t.Error("Unexpected hashbang found")
+	}
 
-	createFile(t, filenameA)
-	defer removeFile(t, filenameA)
+	// parameters.go contains a hashbang
+	if !hashbangCheck(t, "parameters.go") {
+		t.Error("Hashbang not found")
+	}
+}
 
-	createFile(t, filenameB)
-	defer removeFile(t, filenameB)
+func TestCommentHashbang(t *testing.T) {
+	filename := "hashbang.go"
 
-	fileA, err := os.OpenFile(filenameA, os.O_RDWR, 0)
+	// hashbang.go should contain a hashbang
+	if !hashbangCheck(t, filename) {
+		t.Error("Hashbang not found")
+	}
+
+	file, err := os.OpenFile(filename, os.O_RDWR, 0)
 	if err != nil {
 		t.Fatalf("Could not open file: %s", err)
 	}
-	defer fileA.Close()
-	writer := bufio.NewWriter(fileA)
-	if _, err = writer.WriteString("#!/usr/bin/env goplay\n"); err != nil {
-		t.Fatalf("Could not write the hashbang line: %s", err)
-	}
-	writer.Flush()
-	fileA.Close()
+	defer file.Close()
 
-	fileA, err = os.OpenFile(filenameA, os.O_RDWR, 0)
-	if err != nil {
-		t.Fatalf("Could not open file: %s", err)
-	}
-	defer fileA.Close()
-
-	if !CheckForHashbang(fileA) {
-		t.Fatal("Hashbang not found")
+	CommentHashbang(file, "//")
+	if hashbangCheck(t, filename) {
+		t.Error("Unexpected hashbang found")
 	}
 
-	fileB, err := os.OpenFile(filenameB, os.O_RDWR, 0)
-	if err != nil {
-		t.Fatalf("Could not open file: %s", err)
-	}
-	defer fileB.Close()
-	writer = bufio.NewWriter(fileB)
-	if _, err = writer.WriteString("#!/usr/bin/perl"); err != nil {
-		t.Fatalf("Could not write the hashbang line: %s", err)
-	}
-	writer.Flush()
-	fileB.Close()
-
-	fileB, err = os.OpenFile(filenameB, os.O_RDWR, 0)
-	if err != nil {
-		t.Fatalf("Could not open file: %s", err)
-	}
-	defer fileB.Close()
-
-	if CheckForHashbang(fileB) {
-		t.Fatal("Hashbang found")
+	CommentHashbang(file, "#!")
+	if !hashbangCheck(t, filename) {
+		t.Error("Hashbang not found")
 	}
 }
 
 func TestExist(t *testing.T) {
-	filename := "TestExist.test"
+	if !Exist("parameters.go") {
+		t.Errorf("File does not exist: [%s] ", "parameters.go")
+	}
 
-	createFile(t, filename)
-	defer removeFile(t, filename)
-
-	if !Exist(filename) {
-		t.Errorf("File does not exist: [%s] ", filename)
+	if Exist("TestNotExist.test") {
+		t.Errorf("File should not exist: [%s] ", "TestNotExist.test")
 	}
 }
 

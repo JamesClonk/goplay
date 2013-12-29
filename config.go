@@ -2,6 +2,7 @@ package main
 
 type Config struct {
 	ForceCompile    bool
+	CompleteBuild   bool
 	GoplayDirectory string
 }
 

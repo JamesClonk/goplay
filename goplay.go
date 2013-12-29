@@ -50,47 +50,48 @@ import (
 const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
-	forceCompile = false      // Force compilation flag
-	goplayDir    = ".goplay"  // Where to store the compiled programs
-	goplayRc     = "goplayrc" // goplay configuration filename
+	forceCompile  = flag.Bool("f", false, "force compilation") // Force compilation flag
+	completeBuild = flag.Bool("b", false, "complete build")    // Build complete binary out of current directory
+	goplayDir     = ".goplay"                                  // Where to store the compiled programs
+	goplayRc      = "goplayrc"                                 // goplay configuration filename
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Run Go source file
+	fmt.Fprintf(os.Stderr, `Compile and run a Go source file.
+To run the Go source file directly from shell, insert hashbang "#!/usr/bin/env goplay" as the first line.
 
-Usage:
-	+ To run it directly, insert hashbang "#!/usr/bin/env goplay" as the first line.
-	+ goplay [-f] <go-source-file>
+Usage: goplay [OPTION]... FILE
 
+Options:
+	-f		force (re)compilation of source file.
+	-b		use "go build" to build complete binary out of FILE directory
 `)
-	flag.PrintDefaults()
-	os.Exit(2)
+	os.Exit(1)
 }
 
 func main() {
 	var binaryDir, binaryPath string
 
-	// Flags
-	forceCompile = *flag.Bool("f", false, "force compilation")
-
+	// Return custom usage message in case of invalid/unknown flags
 	flag.Usage = usage
-	flag.Parse()
 
+	flag.Parse()
 	if flag.NArg() == 0 {
 		usage()
 	}
 
 	// Read configuration from /etc/goplayrc, ~/.goplayrc
-	ReadConfigurationFile("/etc/" + goplayRc)
-	ReadConfigurationFile("~/." + goplayRc)
+	separator := string(os.PathSeparator)
+	ReadConfigurationFile(filepath.Join(separator, "etc", goplayRc))
+	ReadConfigurationFile(filepath.Join("~", "."+goplayRc))
 
 	// Paths
 	scriptPath := flag.Args()[0]
-	_, scriptName := filepath.Split(scriptPath)
+	scriptDir, scriptName := filepath.Split(scriptPath)
 	ext := filepath.Ext(scriptName)
 
-	// Local directory; ready to work in shared filesystems
-	binaryDir = filepath.Join(goplayDir, filepath.Base(build.ToolDir))
+	// Script directory
+	binaryDir = filepath.Join(scriptDir, goplayDir, filepath.Base(build.ToolDir))
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
 
 	// Windows does not like running binaries without the ".exe" extension
@@ -105,79 +106,119 @@ func main() {
 		}
 	}
 
-	// Run and exit if no forceCompile compilation is set and the file has not been modified
-	if !forceCompile && Exist(binaryPath) {
-		scriptMtime := GetTime(scriptPath)
-		binaryMtime := GetTime(binaryPath)
-		if scriptMtime.Equal(binaryMtime) || scriptMtime.Before(binaryMtime) {
-			RunAndExit(binaryPath)
+	// Check if compilation is needed
+	compileNeeded := false
+	if !*forceCompile && Exist(binaryPath) { // Only check for existing binary if forceCompile is false
+		if GetTime(scriptPath).After(GetTime(binaryPath)) {
+			compileNeeded = true
 		}
+	} else {
+		compileNeeded = true
 	}
 
-	// Compile and link
-	file, err := os.OpenFile(scriptPath, os.O_RDWR, 0)
-	if err != nil {
-		log.Fatalf("Could not open file: %s", err)
-	}
-	defer func() {
+	// Compilation needed?
+	if compileNeeded {
+		// Open source file for modifications
+		file, err := os.OpenFile(scriptPath, os.O_RDWR, 0)
+		if err != nil {
+			log.Fatalf("Could not open file: %s", err)
+		}
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Fatalf("Could not close file: %s", err)
+			}
+		}()
+
+		// Comment hashbang line in source file
+		hasHashbang := CheckForHashbang(file)
+		if hasHashbang {
+			CommentHashbang(file, "//")
+		}
+
+		// Use "go build" if completeBuild flag is set
+		if *completeBuild {
+			// Get current directory
+			prevDir, err := os.Getwd()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if scriptDir != "" && prevDir != scriptDir {
+				// Change into scripts directory
+				if err := os.Chdir(scriptDir); err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			// Build current/scripts directory
+			if err := exec.Command("go", "build", "-o", binaryPath).Run(); err != nil {
+				log.Fatal(err)
+			}
+
+			// Go back to previous directory
+			if err := os.Chdir(prevDir); err != nil {
+				log.Fatal(err)
+			}
+
+		} else {
+			// Set toolchain
+			archChar, err := build.ArchChar(runtime.GOARCH)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Compile source file
+			objectPath := filepath.Join(binaryDir, "_go_."+archChar)
+			cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
+				"-o", objectPath, scriptPath)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Fatalf("%s\n%s", cmd.Args, out)
+			}
+
+			// Link executable
+			out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
+				"-o", binaryPath, objectPath).CombinedOutput()
+			if err != nil {
+				log.Fatalf("Linker failed: %s\n%s", err, out)
+			}
+
+			// Cleaning
+			if err := os.Remove(objectPath); err != nil {
+				log.Fatalf("Could not remove object file: %s", err)
+			}
+		}
+
+		// Restore hashbang line in source file
+		if hasHashbang {
+			CommentHashbang(file, "#!")
+		}
+
+		// Force closing of source file now (before os.Exit call)
 		if err := file.Close(); err != nil {
 			log.Fatalf("Could not close file: %s", err)
 		}
-	}()
-
-	hasHashbang := CheckForHashbang(file)
-	if hasHashbang { // Comment hashbang line
-		file.Seek(0, 0)
-		if _, err = file.Write([]byte("//")); err != nil {
-			log.Fatalf("Could not comment the hashbang line: %s", err)
-		}
-	}
-
-	// Set toolchain
-	archChar, err := build.ArchChar(runtime.GOARCH)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Compile source file
-	objectPath := filepath.Join(binaryDir, "_go_."+archChar)
-	cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
-		"-o", objectPath, scriptPath)
-	out, err := cmd.CombinedOutput()
-
-	if hasHashbang { // Restore hashbang line
-		file.Seek(0, 0)
-		if _, err := file.Write([]byte("#!")); err != nil {
-			log.Fatalf("Could not restore the hashbang line: %s", err)
-		}
-	}
-	if err != nil {
-		log.Fatalf("%s\n%s", cmd.Args, out)
-	}
-
-	// Link executable
-	out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
-		"-o", binaryPath, objectPath).CombinedOutput()
-	if err != nil {
-		log.Fatalf("Linker failed: %s\n%s", err, out)
-	}
-
-	// Cleaning
-	if err := os.Remove(objectPath); err != nil {
-		log.Fatalf("Could not remove object file: %s", err)
 	}
 
 	RunAndExit(binaryPath)
 }
 
+// Overwrites the beginning of hashbang line
+func CommentHashbang(file *os.File, comment string) {
+	file.Seek(0, 0)
+	if _, err := file.Write([]byte(comment)); err != nil {
+		log.Fatalf("Could not write [%s] to hashbang line: %s", comment, err)
+	}
+}
+
 // checkForHashbang checks if the file has the goplay hashbang
-func CheckForHashbang(f *os.File) bool {
-	buf := bufio.NewReader(f)
+func CheckForHashbang(file *os.File) bool {
+	buf := bufio.NewReader(file)
 
 	firstLine, _, err := buf.ReadLine()
 	if err != nil {
 		log.Fatalf("Could not read the first line: %s", err)
 	}
+
 	return bytes.Equal(firstLine, []byte(HASHBANG))
 }
 

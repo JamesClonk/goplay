@@ -46,7 +46,7 @@ import (
 	"time"
 )
 
-const HASHBANG = "#!/usr/bin/env goplay"
+const HASHBANG = "#!/usr/bin/env goplay" // goplay hashbang
 
 var (
 	forceCompile = false     // force compilation flag

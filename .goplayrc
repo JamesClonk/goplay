@@ -1,0 +1,26 @@
+# Forces recompilation every time
+#
+# Example:
+#  ForceCompile Yes
+#
+# Default:
+#  ForceCompile No
+ForceCompile No
+
+# Use "go build" for building complete binary out of script directory
+#
+# Example:
+#  CompleteBuild Yes
+#
+# Default:
+#  CompleteBuild No
+CompleteBuild No
+
+# Goplay subdirectory for storing created binary files
+#
+# Example:
+#  GoplayDirectory /tmp/.goplay_bin
+#
+# Default:
+#  GoplayDirectory .goplay
+GoplayDirectory .goplay

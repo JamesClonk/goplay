@@ -50,10 +50,17 @@ import (
 const HASHBANG = "#!/usr/bin/env goplay"
 
 var (
-	forceCompile  = flag.Bool("f", false, "force compilation") // Force compilation flag
-	completeBuild = flag.Bool("b", false, "complete build")    // Build complete binary out of script directory
-	goplayDir     = ".goplay"                                  // Where to store the compiled programs
-	goplayRc      = "goplayrc"                                 // goplay configuration filename
+	// Configuration default values
+	config = Config{
+		false,     // Force compilation flag
+		false,     // Build complete binary out of script directory
+		".goplay", // Where to store the compiled programs
+	}
+	forceCompileFlag  = flag.Bool("f", false, "force compilation")               // Force compilation flag
+	completeBuildFlag = flag.Bool("b", false, "complete build")                  // Build complete binary out of script directory
+	goplayRc          = "goplayrc"                                               // Configration filename
+	globalGoplayRc    = filepath.Join(string(os.PathSeparator), "etc", goplayRc) // Global goplay configuration file
+	localGoplayRc     = filepath.Join(os.Getenv("HOME"), "."+goplayRc)           // Local goplay configuration file
 )
 
 func usage() {
@@ -80,9 +87,17 @@ func main() {
 		usage()
 	}
 
-	// Read configuration from /etc/goplayrc, ~/.goplayrc
-	ReadConfigurationFile(filepath.Join(string(os.PathSeparator), "etc", goplayRc))
-	ReadConfigurationFile(filepath.Join("~", "."+goplayRc))
+	// Read configuration from /etc/goplayrc, ~/.goplayrc, and overwrite values if found in configuration file
+	ReadConfigurationFile(globalGoplayRc, &config)
+	ReadConfigurationFile(localGoplayRc, &config)
+
+	// Commandline flags take precedence over configuration file values
+	if *forceCompileFlag {
+		config.ForceCompile = true
+	}
+	if *completeBuildFlag {
+		config.CompleteBuild = true
+	}
 
 	// Paths
 	scriptPath := flag.Args()[0]
@@ -90,7 +105,7 @@ func main() {
 	ext := filepath.Ext(scriptName)
 
 	// Script directory
-	binaryDir = filepath.Join(scriptDir, goplayDir, filepath.Base(build.ToolDir))
+	binaryDir = filepath.Join(scriptDir, config.GoplayDirectory, filepath.Base(build.ToolDir))
 	binaryPath = filepath.Join(binaryDir, strings.Replace(scriptName, ext, "", 1))
 
 	// Windows does not like running binaries without the ".exe" extension
@@ -107,7 +122,7 @@ func main() {
 
 	// Check if compilation is needed
 	compileNeeded := false
-	if !*forceCompile && Exist(binaryPath) { // Only check for existing binary if forceCompile is false
+	if !config.ForceCompile && Exist(binaryPath) { // Only check for existing binary if forceCompile is false
 		if GetTime(scriptPath).After(GetTime(binaryPath)) {
 			compileNeeded = true
 		}
@@ -135,7 +150,7 @@ func main() {
 		}
 
 		// Use "go build" if completeBuild flag is set
-		if *completeBuild {
+		if config.CompleteBuild {
 			// Get current directory
 			prevDir, err := os.Getwd()
 			if err != nil {

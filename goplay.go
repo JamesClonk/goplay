@@ -7,13 +7,10 @@
 
 // The 'goplay' command enables you to use Go as if it were an interpreted scripting language.
 //
-// Internally, it compiles and links the Go source file, saving the executable
-// into a global directory whether GOROOT or GOPATH is set else it is saved in
-// the local directory ".goplay"; finally, it is run. If that executable does not
-// exist or its modified time is different than script's, then it's compiled again.
-//
-// It works into a shared filesystem since it's created a directory for each
-// target environment.
+// Internally, it compiles and links the Go source file, saving the resulting executable under the local directory ".goplay".
+// After that it is executed with all commandline parameters passed along.
+// If that executable does not yet exist or its modified time is different than the script's,
+// then it will be compiled again.
 //
 // You can run any Go file by calling it with goplay
 //

@@ -3,5 +3,6 @@ go:
   - 1.2
 env:
   - GOARCH=amd64
+script: ./run_build.sh
 notifications:
   email: false

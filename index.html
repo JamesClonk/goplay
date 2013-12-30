@@ -93,6 +93,14 @@ Options:
         -r              Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
 </code></pre>
 
+<p>Optional configuration files are read in the following order:</p>
+<ul>
+  <li>/etc/goplayrc</li>
+  <li>~/.goplayrc</li>
+  <li>$GO_SOURCE_FILE_DIR/.goplayrc</li>
+</ul>
+<p>The third option allows each project (directory) to contain it's own .goplayrc configuration file.</p>
+
 <h2>
 <a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h2>
 

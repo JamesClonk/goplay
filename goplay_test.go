@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"go/build"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -85,6 +86,18 @@ func hashbangCheck(t *testing.T, filename string) bool {
 	defer file.Close()
 
 	return CheckForHashbang(file)
+}
+
+func modifyReloadGo(t *testing.T, line string) {
+	bytes, err := ioutil.ReadFile("reload.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(bytes), "\n")
+	lines[6] = line
+	if err := ioutil.WriteFile("reload.go", []byte(strings.Join(lines, "\n")), 640); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCheckForHashbang(t *testing.T) {
@@ -179,4 +192,27 @@ func TestParameters(t *testing.T) {
 	}
 	// 3 parameters
 	expected(t, "parameters.go", string(out), "Parameters: 3\n-f\nOne\nTwo\n")
+}
+
+func TestHotReload(t *testing.T) {
+	var buffer bytes.Buffer
+	cmd := exec.Command("goplay", "-r", "reload.go")
+	cmd.Stdout = &buffer
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Have to sleep long enough for file watches to be setup and binary to be started
+	// If the machine this test runs on is too slow, the sleep value needs to be increased..
+	time.Sleep(333 * time.Millisecond)
+
+	// Modify reload.go while it is running in an infinite loop
+	modifyReloadGo(t, "var stop = true")
+	defer modifyReloadGo(t, "var stop = false") // Reset reload.go
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	expected(t, "reload.go", buffer.String(), "Start!\nStart!\nStop!\n")
 }

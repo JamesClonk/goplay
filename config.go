@@ -15,6 +15,7 @@ import (
 type Config struct {
 	ForceCompile    bool
 	CompleteBuild   bool
+	HotReload       bool
 	GoplayDirectory string
 }
 
@@ -42,6 +43,9 @@ func ReadConfigurationFile(filename string, config *Config) bool {
 		}
 		if value, found := properties["completebuild"]; found {
 			config.CompleteBuild = value == "yes"
+		}
+		if value, found := properties["hotreload"]; found {
+			config.HotReload = value == "yes"
 		}
 		if value, found := properties["goplaydirectory"]; found {
 			config.GoplayDirectory = value

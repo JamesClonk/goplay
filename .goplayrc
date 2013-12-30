@@ -16,6 +16,15 @@ ForceCompile No
 #  CompleteBuild No
 CompleteBuild No
 
+# Watch for source file changes and recompile and reload if necessary
+#
+# Example:
+#  HotReload Yes
+#
+# Default:
+#  HotReload No
+HotReload No
+
 # Goplay directory for storing created binary files
 #
 # Example:

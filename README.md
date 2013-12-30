@@ -6,18 +6,18 @@ Use Go like a scripting language.
 
 ## Installation
 
-	go get github.com/JamesClonk/goplay
+	$ go get github.com/JamesClonk/goplay
 
 ## Usage
 
 You can run any Go file by calling it with goplay
 
-	goplay example.go
+	$ goplay example.go
 
 This is similar to using plain "go run example.go".
 The real use of goplay is the ability to use it as a hashbang and run any Go files by itself
 
-	./example.go
+	$ ./example.go
 
 For this to work, you have to insert the following hashbang as the first line in the Go file  
 
@@ -25,16 +25,35 @@ For this to work, you have to insert the following hashbang as the first line in
 
 and set it to be executable
 
-	chmod +x example.go
+	$ chmod +x example.go
+
+Goplay can also be used to "hot reload" a Go app / script.      
+If run with commandline flag *-r*, it will watch the source(s) for changes and recompile & reload them.
+
+	$ goplay -r MyDevelopmentHttpServer.go
+
+See usage message (-h or --help)
+
+	$ goplay -h
+	Compile and run a Go source file.
+	To run the Go source file directly from shell, insert hashbang "#!/usr/bin/env goplay" as the first line.
+
+	Usage: goplay [OPTION]... FILE
+
+	Options:
+	        -f              force (re)compilation of source file.
+	        -b              use "go build" to build complete binary out of FILE directory
+	        -r              Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
 
 ## How it works
 
 The *goplay* command enables you to use Go as if it were an interpreted scripting language.
 
-Internally, it compiles and links the Go source file, saving the resulting executable under the local directory ".goplay".
+Internally, it compiles and links the Go source file, saving the resulting executable under the local directory ".goplay", or any other directory specified by the configuration file ~/.goplayrc.
 After that it is executed with all commandline parameters passed along. 
-If that executable does not yet exist or its modified time is different than the script's, 
+If that executable does not yet exist or its modified time is different than the scripts, 
 then it will be compiled again.
+When run in "hot reload" mode, it will always force recompilation of the script.
 
 ## License
 

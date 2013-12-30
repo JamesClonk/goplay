@@ -1,8 +1,13 @@
 language: go
 go:
   - 1.2
+  - tip
 env:
   - GOARCH=amd64
 script: ./run_build.sh
 notifications:
-  email: false
+  email:
+    recipients:
+      - jamesclonk@jamesclonk.ch
+    on_success: change
+    on_failure: always

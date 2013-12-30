@@ -11,7 +11,7 @@ import (
 )
 
 func TestReadConfigurationFile(t *testing.T) {
-	config = Config{false, true, ".goplay"}
+	config = Config{false, true, false, ".goplay"}
 
 	found := ReadConfigurationFile("config.rc", &config)
 	if !found {
@@ -23,6 +23,9 @@ func TestReadConfigurationFile(t *testing.T) {
 	}
 	if config.CompleteBuild {
 		t.Error("CompleteBuild should now be set to 'false', but it is not")
+	}
+	if !config.HotReload {
+		t.Error("HotReload should now be set to 'true', but it is not")
 	}
 	expected := ".goplay/test"
 	if config.GoplayDirectory != expected {

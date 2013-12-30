@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Goplay by JamesClonk</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Goplay</h1>
+        <h2>Run Go source files automatically</h2>
+        <a href="https://github.com/JamesClonk/goplay" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a name="goplay" class="anchor" href="#goplay"><span class="octicon octicon-link"></span></a>Goplay</h1>
+
+<p>Use Go like a scripting language.</p>
+
+<p><a href="https://godoc.org/github.com/JamesClonk/goplay"><img src="https://godoc.org/github.com/JamesClonk/goplay?status.png" alt="GoDoc"></a> <a href="https://travis-ci.org/JamesClonk/goplay"><img src="https://travis-ci.org/JamesClonk/goplay.png?branch=master" alt="Build Status"></a></p>
+
+<h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<pre><code>$ go get github.com/JamesClonk/goplay
+</code></pre>
+
+<h2>
+<a name="requirements" class="anchor" href="#requirements"><span class="octicon octicon-link"></span></a>Requirements</h2>
+
+<p>Goplay requires the fsnotify package for "hot reload" functionality</p>
+
+<pre><code>$ go get github.com/howeyc/fsnotify
+</code></pre>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>You can run any Go file by calling it with goplay</p>
+
+<pre><code>$ goplay example.go
+</code></pre>
+
+<p>This is similar to using plain "go run example.go".
+The real use of goplay is the ability to use it as a hashbang and run any Go files by itself</p>
+
+<pre><code>$ ./example.go
+</code></pre>
+
+<p>For this to work, you have to insert the following hashbang as the first line in the Go file  </p>
+
+<pre><code>#!/usr/bin/env goplay
+</code></pre>
+
+<p>and set it to be executable</p>
+
+<pre><code>$ chmod +x example.go
+</code></pre>
+
+<p>Goplay can also be used to "hot reload" a Go app / script.<br>
+If run with commandline flag <em>-r</em>, it will watch the source(s) for changes and recompile &amp; reload them.</p>
+
+<pre><code>$ goplay -r MyDevelopmentHttpServer.go
+</code></pre>
+
+<p>See usage message (-h or --help)</p>
+
+<pre><code>$ goplay -h
+Compile and run a Go source file.
+To run the Go source file directly from shell, insert hashbang "#!/usr/bin/env goplay" as the first line.
+
+Usage: goplay [OPTION]... FILE
+
+Options:
+        -f              force (re)compilation of source file.
+        -b              use "go build" to build complete binary out of FILE directory
+        -r              Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
+</code></pre>
+
+<h2>
+<a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h2>
+
+<p>The <em>goplay</em> command enables you to use Go as if it were an interpreted scripting language.</p>
+
+<p>Internally, it compiles and links the Go source file, saving the resulting executable under the local directory ".goplay", or any other directory specified by the configuration file ~/.goplayrc.
+After that it is executed with all commandline parameters passed along. 
+If that executable does not yet exist or its modified time is different than the scripts, 
+then it will be compiled again.
+When run in "hot reload" mode, it will always force recompilation of the script.</p>
+
+<h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>The source files are distributed under the <a href="http://mozilla.org/MPL/2.0/">Mozilla Public License, version 2.0</a>, unless otherwise noted.<br>
+Please read the <a href="http://www.mozilla.org/MPL/2.0/FAQ.html">FAQ</a> if you have further questions regarding the license.     </p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/JamesClonk/goplay/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/JamesClonk/goplay/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/JamesClonk/goplay"></a> is maintained by <a href="https://github.com/JamesClonk">JamesClonk</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>

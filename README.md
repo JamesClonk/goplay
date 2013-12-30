@@ -8,6 +8,12 @@ Use Go like a scripting language.
 
 	$ go get github.com/JamesClonk/goplay
 
+## Requirements
+
+Goplay requires the fsnotify package for "hot reload" functionality
+
+	$ go get github.com/howeyc/fsnotify
+	
 ## Usage
 
 You can run any Go file by calling it with goplay

@@ -7,13 +7,15 @@
 package main
 
 import (
+	"os"
+	"os/exec"
 	"testing"
 )
 
 func TestReadConfigurationFile(t *testing.T) {
 	config = Config{false, true, false, ".goplay"}
 
-	found := ReadConfigurationFile("config.rc", &config)
+	found := ReadConfigurationFile("config/config.rc", &config)
 	if !found {
 		t.Error("Configuration file could not be found, but it should be")
 	}
@@ -30,5 +32,21 @@ func TestReadConfigurationFile(t *testing.T) {
 	expected := ".goplay/test"
 	if config.GoplayDirectory != expected {
 		t.Errorf("GoplayDirectory not as expected, was [%s], but should be [%s]", config.GoplayDirectory, expected)
+	}
+}
+
+func TestLocalGoplayRc(t *testing.T) {
+	out, err := exec.Command("./config/config.go").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected(t, "config/config.go", string(out), "local .goplayrc test\n")
+
+	if !Exist("config/.config_test") {
+		t.Errorf("Directory does not exist: [%s] ", ".config_test")
+	}
+
+	if err := os.RemoveAll("config/.config_test"); err != nil {
+		t.Fatal(err)
 	}
 }

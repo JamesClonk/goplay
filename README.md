@@ -51,6 +51,13 @@ See usage message (-h or --help)
 	        -b              use "go build" to build complete binary out of FILE directory
 	        -r              Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
 
+Optional configuration files are read in the following order:
+- /etc/goplayrc
+- ~/.goplayrc
+- $GO_SOURCE_FILE_DIR/.goplayrc
+
+The third option allows each project (directory) to contain it's own .goplayrc configuration file.
+
 ## How it works
 
 The *goplay* command enables you to use Go as if it were an interpreted scripting language.

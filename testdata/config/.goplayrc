@@ -1,0 +1,11 @@
+# Forces recompilation every time
+ForceCompile Yes
+
+# Use "go build" for building complete binary out of script directory
+Complete_Build no
+
+# Watch for source file changes and recompile and reload if necessary
+HotReload yes
+
+# Goplay directory for storing created binary files
+goplay_DIRECTORY .config_test

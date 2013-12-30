@@ -35,6 +35,13 @@
 // If run with commandline flag *-r*, it will watch the source(s) for changes and recompile & reload them.
 //
 //   $ goplay -r MyDevelopmentHttpServer.go
+//
+// Optional configuration files are read in the following order:
+// - /etc/goplayrc
+// - ~/.goplayrc
+// - $GO_SOURCE_FILE_DIR/.goplayrc
+//
+// The third option allows each project (directory) to contain it's own .goplayrc configuration file.
 package main
 
 import (
@@ -69,8 +76,8 @@ var (
 	completeBuildFlag = flag.Bool("b", false, "complete build")                 // Build complete binary out of script directory
 	reloadFlag        = flag.Bool("r", false, "reload on file changes")         // Watch for source file changes and recompile and reload if necessary
 	goplayRc          = "goplayrc"                                              // Configration filename
-	globalGoplayRc    = filepath.Join(string(os.PathSeparator)+"etc", goplayRc) // Global goplay configuration file
-	localGoplayRc     = filepath.Join(os.Getenv("HOME"), "."+goplayRc)          // Local goplay configuration file
+	systemGoplayRc    = filepath.Join(string(os.PathSeparator)+"etc", goplayRc) // Systemwide goplay configuration file
+	userGoplayRc      = filepath.Join(os.Getenv("HOME"), "."+goplayRc)          // User goplay configuration file
 )
 
 func usage() {
@@ -96,9 +103,18 @@ func main() {
 		usage()
 	}
 
-	// Read configuration from /etc/goplayrc, ~/.goplayrc, and overwrite values if found in configuration file
-	ReadConfigurationFile(globalGoplayRc, &config)
-	ReadConfigurationFile(localGoplayRc, &config)
+	// Script paths
+	scriptPath, err := filepath.Abs(flag.Args()[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+	scriptDir, scriptName := filepath.Split(scriptPath)
+
+	// Read configuration from /etc/goplayrc, ~/.goplayrc, $PWD/.goplayrc, and overwrite values if found in configuration file
+	ReadConfigurationFile(systemGoplayRc, &config)
+	ReadConfigurationFile(userGoplayRc, &config)
+	// This allows each script(directory) to have a local .goplayrc that takes precedence over the other 2 configuration files
+	ReadConfigurationFile(filepath.Join(scriptDir, "."+goplayRc), &config)
 
 	// Commandline flags take precedence over configuration file values
 	if *forceCompileFlag {
@@ -112,20 +128,12 @@ func main() {
 		config.ForceCompile = true // HotReload enables ForceCompile
 	}
 
-	// Script paths
-	scriptPath := flag.Args()[0]
-	scriptDir, scriptName := filepath.Split(scriptPath)
-
 	// Binary paths
-	binaryDir := filepath.Base(build.ToolDir)
+	var binaryDir string
 	if strings.HasPrefix(config.GoplayDirectory, string(os.PathSeparator)) {
 		// Handle absolute goplay directories different from relative ones
-		if scriptAbsolutePath, err := filepath.Abs(scriptDir); err != nil {
-			log.Fatal(err)
-		} else {
-			subdir := strings.Replace(scriptAbsolutePath, string(os.PathSeparator), "_", -1)
-			binaryDir = filepath.Join(config.GoplayDirectory, subdir, binaryDir)
-		}
+		subdir := strings.Replace(scriptPath, string(os.PathSeparator), "_", -1)
+		binaryDir = filepath.Join(config.GoplayDirectory, subdir, filepath.Base(build.ToolDir))
 	} else {
 		// Relative goplay directory
 		binaryDir = filepath.Join(scriptDir, config.GoplayDirectory, filepath.Base(build.ToolDir))
@@ -186,18 +194,22 @@ func CompileBinary(scriptPath string, binaryPath string) {
 	// Use "go build" if completeBuild flag is set
 	if config.CompleteBuild {
 		// Get current directory
-		prevDir, err := os.Getwd()
+		currentDir, err := os.Getwd()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if scriptDir != "" && prevDir != scriptDir {
+		currentDir, err = filepath.Abs(currentDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if currentDir != scriptDir {
 			// Change into scripts directory
 			if err := os.Chdir(scriptDir); err != nil {
 				log.Fatal(err)
 			}
 			defer func() {
 				// Go back to previous directory
-				if err := os.Chdir(prevDir); err != nil {
+				if err := os.Chdir(currentDir); err != nil {
 					log.Fatal(err)
 				}
 			}()

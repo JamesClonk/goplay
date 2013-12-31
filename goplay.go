@@ -190,68 +190,71 @@ func CompileBinary(scriptPath string, binaryPath string) {
 	if hasHashbang {
 		CommentHashbang(file, "//")
 	}
+	defer func() {
+		// Restore hashbang line in source file
+		if hasHashbang {
+			CommentHashbang(file, "#!")
+		}
+		// Recover build panic and use it for log.Fatal after hashbang has been restored
+		if r := recover(); r != nil {
+			log.Fatal(r)
+		}
+	}()
 
 	// Use "go build" if completeBuild flag is set
 	if config.CompleteBuild {
 		// Get current directory
 		currentDir, err := os.Getwd()
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		currentDir, err = filepath.Abs(currentDir)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		if currentDir != scriptDir {
 			// Change into scripts directory
 			if err := os.Chdir(scriptDir); err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 			defer func() {
 				// Go back to previous directory
 				if err := os.Chdir(currentDir); err != nil {
-					log.Fatal(err)
+					panic(err)
 				}
 			}()
 		}
 
 		// Build current/scripts directory
 		if err := exec.Command("go", "build", "-o", binaryPath).Run(); err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 
 	} else {
 		// Set toolchain
 		archChar, err := build.ArchChar(runtime.GOARCH)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 
 		// Compile source file
 		objectPath := filepath.Join(binaryDir, "_go_."+archChar)
-		cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"),
-			"-o", objectPath, scriptPath)
+		cmd := exec.Command(filepath.Join(build.ToolDir, archChar+"g"), "-o", objectPath, scriptPath)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			log.Fatalf("%s\n%s", cmd.Args, out)
+			panic(fmt.Errorf("%s\n%s", cmd.Args, out))
 		}
 
 		// Link executable
-		out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"),
-			"-o", binaryPath, objectPath).CombinedOutput()
+		out, err = exec.Command(filepath.Join(build.ToolDir, archChar+"l"), "-o", binaryPath, objectPath).CombinedOutput()
 		if err != nil {
-			log.Fatalf("Linker failed: %s\n%s", err, out)
+			panic(fmt.Errorf("Linker failed: %s\n%s", err, out))
 		}
 
 		// Cleaning
 		if err := os.Remove(objectPath); err != nil {
-			log.Fatalf("Could not remove object file: %s", err)
+			panic(fmt.Errorf("Could not remove object file: %s", err))
 		}
-	}
-
-	// Restore hashbang line in source file
-	if hasHashbang {
-		CommentHashbang(file, "#!")
 	}
 }
 

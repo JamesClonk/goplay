@@ -9,6 +9,8 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +21,8 @@ type Config struct {
 	GoplayDirectory string
 }
 
+var configRx = regexp.MustCompile(`\s*([[:alpha:]]\w*)\s+(.+)`)
+
 // Read configuration and overwrite values if found
 func ReadConfigurationFile(filename string, config *Config) bool {
 	if Exist(filename) {
@@ -28,24 +32,26 @@ func ReadConfigurationFile(filename string, config *Config) bool {
 		}
 
 		properties := make(map[string]string)
-
-		lines := strings.Split(string(bytes), "\n")
-		for _, line := range lines {
-			fields := strings.Fields(line)
-			if len(fields) >= 2 {
-				// Convert to lowercase, and remove all underscores for "key"
-				properties[strings.Replace(strings.ToLower(fields[0]), "_", "", -1)] = strings.ToLower(fields[1])
+		if matched := configRx.FindAllStringSubmatch(string(bytes), -1); matched != nil {
+			for _, match := range matched {
+				// Convert to lowercase, and remove all underscores
+				key := strings.Replace(strings.ToLower(match[1]), "_", "", -1)
+				value := strings.ToLower(strings.Trim(match[2], "\t "))
+				properties[key] = value
 			}
 		}
 
 		if value, found := properties["forcecompile"]; found {
-			config.ForceCompile = value == "yes"
+			flag, _ := strconv.ParseBool(value)
+			config.ForceCompile = value == "yes" || flag
 		}
 		if value, found := properties["completebuild"]; found {
-			config.CompleteBuild = value == "yes"
+			flag, _ := strconv.ParseBool(value)
+			config.CompleteBuild = value == "yes" || flag
 		}
 		if value, found := properties["hotreload"]; found {
-			config.HotReload = value == "yes"
+			flag, _ := strconv.ParseBool(value)
+			config.HotReload = value == "yes" || flag
 		}
 		if value, found := properties["goplaydirectory"]; found {
 			config.GoplayDirectory = value

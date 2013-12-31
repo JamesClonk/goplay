@@ -72,9 +72,9 @@ func removeFile(t *testing.T, filename string) {
 	}
 }
 
-func expected(t *testing.T, test string, output string, expected string) {
+func expected(t *testing.T, test string, output interface{}, expected interface{}) {
 	if output != expected {
-		t.Errorf("output of %s not as expected, was [%s], but should be [%s]", test, output, expected)
+		t.Errorf("output of %s not as expected, was [%v], but should be [%v]", test, output, expected)
 	}
 }
 
@@ -197,6 +197,29 @@ func TestParameters(t *testing.T) {
 func TestHotReload(t *testing.T) {
 	var buffer bytes.Buffer
 	cmd := exec.Command("goplay", "-r", "reload.go")
+	cmd.Stdout = &buffer
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Have to sleep long enough for file watches to be setup and binary to be started
+	// If the machine this test runs on is too slow, the sleep value needs to be increased..
+	time.Sleep(333 * time.Millisecond)
+
+	// Modify reload.go while it is running in an infinite loop
+	modifyReloadGo(t, "var stop = true")
+	defer modifyReloadGo(t, "var stop = false") // Reset reload.go
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	expected(t, "reload.go", buffer.String(), "Start!\nStart!\nStop!\n")
+}
+
+func TestHotReloadRecursive(t *testing.T) {
+	var buffer bytes.Buffer
+	cmd := exec.Command("goplay", "-R", "reload.go")
 	cmd.Stdout = &buffer
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)

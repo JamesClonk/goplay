@@ -13,7 +13,7 @@ import (
 )
 
 func TestReadConfigurationFile(t *testing.T) {
-	config = Config{false, true, false, ".goplay"}
+	config = Config{false, true, false, false, []string{"go"}, ".goplay"}
 
 	found := ReadConfigurationFile("config/config.rc", &config)
 	if !found {
@@ -29,9 +29,18 @@ func TestReadConfigurationFile(t *testing.T) {
 	if !config.HotReload {
 		t.Error("HotReload should now be set to 'true', but it is not")
 	}
-	expected := ".goplay/test"
-	if config.GoplayDirectory != expected {
-		t.Errorf("GoplayDirectory not as expected, was [%s], but should be [%s]", config.GoplayDirectory, expected)
+	if !config.HotReloadRecursive {
+		t.Error("HotReloadRecursive should now be set to 'true', but it is not")
+	}
+	expectedExtensions := []string{"go", "html"}
+	for _, extension := range expectedExtensions {
+		if !config.HotReloadWatchExtensions.Contains(extension) {
+			t.Errorf("HotReloadWatchExtensions not as expected, was [%s], but should be [%s]", config.HotReloadWatchExtensions, expectedExtensions)
+		}
+	}
+	expectedDirectory := ".goplay/test"
+	if config.GoplayDirectory != expectedDirectory {
+		t.Errorf("GoplayDirectory not as expected, was [%s], but should be [%s]", config.GoplayDirectory, expectedDirectory)
 	}
 }
 

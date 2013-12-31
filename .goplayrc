@@ -17,6 +17,7 @@ ForceCompile No
 CompleteBuild No
 
 # Watch for source file changes and recompile and reload if necessary
+# Enables ForceCompile
 #
 # Example:
 #  HotReload Yes
@@ -24,6 +25,26 @@ CompleteBuild No
 # Default:
 #  HotReload No
 HotReload No
+
+# Watch recursively for source file changes, all subdirectories/files included
+# Commonly be used in combination with CompleteBuild to build/watch an entire directory and it's subdirectories
+#
+# Example:
+#  HotReloadRecursive Yes
+#
+# Default:
+#  HotReloadRecursive No
+HotReloadRecursive No
+
+# File extensions to watch for file changes, for hot reload
+# Commonly be used in combination with CompleteBuild to build/watch an entire project and its directory (and subdirectories)
+#
+# Example:
+#  HotReloadWatchExtensions go,html,tmpl,inc,goplayrc
+#
+# Default:
+#  HotReloadWatchExtensions go
+HotReloadWatchExtensions go,html
 
 # Goplay directory for storing created binary files
 #

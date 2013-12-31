@@ -67,10 +67,12 @@ const HASHBANG = "#!/usr/bin/env goplay"
 var (
 	// Configuration default values
 	config = Config{
-		false,     // Force compilation flag
-		false,     // Build complete binary out of script directory
-		false,     // Hot reload, watch for file changes and recompile and restart binary
-		".goplay", // Where to store the compiled programs
+		false,          // Force compilation flag
+		false,          // Build complete binary out of script directory
+		false,          // Hot reload, watch for file changes and recompile and restart binary
+		false,          // Recursively watch files/folders for hot reload
+		[]string{"go"}, // File extensions to watch for file changes for hot reload
+		".goplay",      // Where to store the compiled programs
 	}
 	forceCompileFlag    = flag.Bool("f", false, "force compilation")                               // Force compilation flag
 	completeBuildFlag   = flag.Bool("b", false, "complete build")                                  // Build complete binary out of script directory
@@ -123,6 +125,10 @@ func main() {
 	}
 	if *completeBuildFlag {
 		config.CompleteBuild = true
+	}
+	if *recursiveReloadFlag {
+		config.HotReloadRecursive = true
+		*reloadFlag = true // Recursive HotReload enables HotReload
 	}
 	if *reloadFlag {
 		config.HotReload = true
@@ -309,9 +315,12 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 		go func() {
 			for {
 				select {
-				case _ = <-watcher.Event:
-					restart = true
-					cmd.Process.Kill()
+				case event := <-watcher.Event:
+					fileFields := strings.SplitN(event.String(), ":", 2)
+					if config.HotReloadWatchExtensions.Contains(fileFields[0]) {
+						restart = true
+						cmd.Process.Kill()
+					}
 				case err := <-watcher.Error:
 					log.Println(err)
 				}
@@ -319,7 +328,7 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 		}()
 
 		toWatch := scriptPath
-		if config.CompleteBuild { // Watch whole directory if in CompleteBuild mode ("go build")
+		if config.CompleteBuild || config.HotReloadRecursive { // Watch whole directory if in CompleteBuild ("go build") or recursive mode
 			toWatch, _ = filepath.Split(scriptPath)
 		}
 
@@ -327,6 +336,13 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 			log.Fatal(err)
 		}
 		defer watcher.Close()
+
+		if config.HotReloadRecursive {
+			log.Fatal("add recursive folders to watch here.. (walk()?)")
+			if err := watcher.Watch(toWatch); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 
 	cmd = StartBinary(binaryPath)

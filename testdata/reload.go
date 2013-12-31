@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-var stop = false
+var stop = true
 
 func main() {
 	fmt.Println("Start!")

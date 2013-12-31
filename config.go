@@ -14,16 +14,27 @@ import (
 	"strings"
 )
 
+type FileExtensions []string
+
 type Config struct {
 	ForceCompile             bool
 	CompleteBuild            bool
 	HotReload                bool
 	HotReloadRecursive       bool
-	HotReloadWatchExtensions []string
+	HotReloadWatchExtensions FileExtensions
 	GoplayDirectory          string
 }
 
 var configRx = regexp.MustCompile(`\s*([[:alpha:]]\w*)\s+(.+)`)
+
+func (extensions *FileExtensions) Contains(s string) bool {
+	for _, e := range *extensions {
+		if e == s {
+			return true
+		}
+	}
+	return false
+}
 
 // Read configuration and overwrite values if found
 func ReadConfigurationFile(filename string, config *Config) bool {

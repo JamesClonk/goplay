@@ -47,9 +47,10 @@ See usage message (-h or --help)
 	Usage: goplay [OPTION]... FILE
 
 	Options:
-	        -f              force (re)compilation of source file.
-	        -b              use "go build" to build complete binary out of FILE directory
-	        -r              Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
+	        -f	force (re)compilation of source file.
+	        -b	use "go build" to build complete binary out of FILE directory
+	        -r	Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
+	        -R	Watch recursively for file changes (enables [-r])
 
 Optional configuration files are read in the following order:
 - /etc/goplayrc

@@ -72,12 +72,13 @@ var (
 		false,     // Hot reload, watch for file changes and recompile and restart binary
 		".goplay", // Where to store the compiled programs
 	}
-	forceCompileFlag  = flag.Bool("f", false, "force compilation")              // Force compilation flag
-	completeBuildFlag = flag.Bool("b", false, "complete build")                 // Build complete binary out of script directory
-	reloadFlag        = flag.Bool("r", false, "reload on file changes")         // Watch for source file changes and recompile and reload if necessary
-	goplayRc          = "goplayrc"                                              // Configration filename
-	systemGoplayRc    = filepath.Join(string(os.PathSeparator)+"etc", goplayRc) // Systemwide goplay configuration file
-	userGoplayRc      = filepath.Join(os.Getenv("HOME"), "."+goplayRc)          // User goplay configuration file
+	forceCompileFlag    = flag.Bool("f", false, "force compilation")                               // Force compilation flag
+	completeBuildFlag   = flag.Bool("b", false, "complete build")                                  // Build complete binary out of script directory
+	reloadFlag          = flag.Bool("r", false, "reload on file changes")                          // Watch for source file changes and recompile and reload if necessary
+	recursiveReloadFlag = flag.Bool("R", false, "watch files/directories recursively for changes") // Watch recursively for source file changes
+	goplayRc            = "goplayrc"                                                               // Configration filename
+	systemGoplayRc      = filepath.Join(string(os.PathSeparator)+"etc", goplayRc)                  // Systemwide goplay configuration file
+	userGoplayRc        = filepath.Join(os.Getenv("HOME"), "."+goplayRc)                           // User goplay configuration file
 )
 
 func usage() {

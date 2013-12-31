@@ -15,10 +15,12 @@ import (
 )
 
 type Config struct {
-	ForceCompile    bool
-	CompleteBuild   bool
-	HotReload       bool
-	GoplayDirectory string
+	ForceCompile             bool
+	CompleteBuild            bool
+	HotReload                bool
+	HotReloadRecursive       bool
+	HotReloadWatchExtensions []string
+	GoplayDirectory          string
 }
 
 var configRx = regexp.MustCompile(`\s*([[:alpha:]]\w*)\s+(.+)`)
@@ -52,6 +54,17 @@ func ReadConfigurationFile(filename string, config *Config) bool {
 		if value, found := properties["hotreload"]; found {
 			flag, _ := strconv.ParseBool(value)
 			config.HotReload = value == "yes" || flag
+		}
+		if value, found := properties["hotreloadrecursive"]; found {
+			flag, _ := strconv.ParseBool(value)
+			config.HotReloadRecursive = value == "yes" || flag
+		}
+		if value, found := properties["hotreloadwatchextensions"]; found {
+			var extensions []string
+			if value != "" {
+				extensions = strings.SplitN(value, ",", -1)
+			}
+			config.HotReloadWatchExtensions = extensions
 		}
 		if value, found := properties["goplaydirectory"]; found {
 			config.GoplayDirectory = value

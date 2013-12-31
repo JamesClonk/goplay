@@ -12,6 +12,21 @@ import (
 	"testing"
 )
 
+func TestContains(t *testing.T) {
+	var extensions FileExtensions
+	extensions = []string{"go", "html", "tmpl"}
+
+	if !extensions.Contains("go") {
+		t.Error("FileExtensions should contain [go], but did not")
+	}
+	if !extensions.Contains("tmpl") {
+		t.Error("FileExtensions should contain [tmpl], but did not")
+	}
+	if extensions.Contains("js") {
+		t.Error("FileExtensions should not contain [js]")
+	}
+}
+
 func TestReadConfigurationFile(t *testing.T) {
 	config = Config{false, true, false, false, []string{"go"}, ".goplay"}
 

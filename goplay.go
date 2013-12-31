@@ -32,15 +32,11 @@
 //   $ chmod +x file.go
 //
 // Goplay can also be used to "hot reload" a Go app / script.
-// If run with commandline flag *-r*, it will watch the source(s) for changes and recompile & reload them.
+// If run with commandline flag -r, it will watch the source(s) for changes and recompile & reload them.
 //
 //   $ goplay -r MyDevelopmentHttpServer.go
 //
-// Optional configuration files are read in the following order:
-// - /etc/goplayrc
-// - ~/.goplayrc
-// - $GO_SOURCE_FILE_DIR/.goplayrc
-//
+// Optional configuration files are read in the following order: /etc/goplayrc, ~/.goplayrc, $GO_SOURCE_FILE_DIR/.goplayrc
 // The third option allows each project (directory) to contain it's own .goplayrc configuration file.
 package main
 
@@ -93,6 +89,7 @@ Options:
 	-f		force (re)compilation of source file.
 	-b		use "go build" to build complete binary out of FILE directory
 	-r		Watch for changes in FILE and recompile and reload if necessary (enables force compilation [-f])
+	-R		Watch recursively for file changes (enables [-r])
 `)
 	os.Exit(1)
 }
@@ -300,6 +297,24 @@ func GetTime(filename string) time.Time {
 	return info.ModTime()
 }
 
+func GetSubdirectories(path string) (paths []string) {
+	subdirs := func(path string, fileinfo os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if fileinfo.IsDir() && !filepath.HasPrefix(fileinfo.Name(), ".") {
+			paths = append(paths, path)
+		}
+		return nil
+	}
+
+	if err := filepath.Walk(path, subdirs); err != nil {
+		log.Fatal(err)
+	}
+	return paths
+}
+
 // RunWatchAndExit sets up a file watcher for hot-reload if needed, executes the binary and exits with it's exitcode
 func RunWatchAndExit(scriptPath string, binaryPath string) {
 	var err error
@@ -316,10 +331,18 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 			for {
 				select {
 				case event := <-watcher.Event:
-					fileFields := strings.SplitN(event.String(), ":", 2)
-					if config.HotReloadWatchExtensions.Contains(fileFields[0]) {
-						restart = true
-						cmd.Process.Kill()
+					if !restart {
+						// Get filename & extension
+						fileName := filepath.Base(event.Name)
+						fileExtension := filepath.Ext(fileName)
+						if filepath.HasPrefix(fileExtension, ".") { // Remove leading dot
+							fileExtension = fileExtension[1:]
+						}
+						if fileName == filepath.Base(scriptPath) || // Either match the script file itself
+							config.HotReloadWatchExtensions.Contains(fileExtension) { // or if it has one of the defined extensions to watch
+							restart = true
+							cmd.Process.Kill()
+						}
 					}
 				case err := <-watcher.Error:
 					log.Println(err)
@@ -331,16 +354,18 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 		if config.CompleteBuild || config.HotReloadRecursive { // Watch whole directory if in CompleteBuild ("go build") or recursive mode
 			toWatch, _ = filepath.Split(scriptPath)
 		}
-
 		if err := watcher.Watch(toWatch); err != nil {
 			log.Fatal(err)
 		}
 		defer watcher.Close()
 
+		// Also watch subdirectories and files if in recursive mode
 		if config.HotReloadRecursive {
-			log.Fatal("add recursive folders to watch here.. (walk()?)")
-			if err := watcher.Watch(toWatch); err != nil {
-				log.Fatal(err)
+			subdirs := GetSubdirectories(scriptPath)
+			for _, dir := range subdirs {
+				if err := watcher.Watch(dir); err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 	}

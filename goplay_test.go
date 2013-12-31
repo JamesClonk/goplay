@@ -165,6 +165,14 @@ func TestGetTime(t *testing.T) {
 	}
 }
 
+func TestGetSubdirectories(t *testing.T) {
+	subdirs := GetSubdirectories("./")
+
+	if subdirs[0] != "config" {
+		t.Errorf("Subdirectories[0] should be [config], but got [%v]", subdirs)
+	}
+}
+
 func TestInput(t *testing.T) {
 	var buffer bytes.Buffer
 	cmd := exec.Command("./input.go")
@@ -197,29 +205,6 @@ func TestParameters(t *testing.T) {
 func TestHotReload(t *testing.T) {
 	var buffer bytes.Buffer
 	cmd := exec.Command("goplay", "-r", "reload.go")
-	cmd.Stdout = &buffer
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Have to sleep long enough for file watches to be setup and binary to be started
-	// If the machine this test runs on is too slow, the sleep value needs to be increased..
-	time.Sleep(333 * time.Millisecond)
-
-	// Modify reload.go while it is running in an infinite loop
-	modifyReloadGo(t, "var stop = true")
-	defer modifyReloadGo(t, "var stop = false") // Reset reload.go
-
-	if err := cmd.Wait(); err != nil {
-		t.Fatal(err)
-	}
-
-	expected(t, "reload.go", buffer.String(), "Start!\nStart!\nStop!\n")
-}
-
-func TestHotReloadRecursive(t *testing.T) {
-	var buffer bytes.Buffer
-	cmd := exec.Command("goplay", "-R", "reload.go")
 	cmd.Stdout = &buffer
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)

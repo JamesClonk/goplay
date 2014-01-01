@@ -88,14 +88,14 @@ func hashbangCheck(t *testing.T, filename string) bool {
 	return CheckForHashbang(file)
 }
 
-func modifyReloadGo(t *testing.T, line string) {
-	bytes, err := ioutil.ReadFile("reload.go")
+func modifyFile(t *testing.T, line string, lineNum int, filename string) {
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(string(bytes), "\n")
-	lines[6] = line
-	if err := ioutil.WriteFile("reload.go", []byte(strings.Join(lines, "\n")), 640); err != nil {
+	lines[lineNum] = line
+	if err := ioutil.WriteFile(filename, []byte(strings.Join(lines, "\n")), 0664); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -168,9 +168,102 @@ func TestGetTime(t *testing.T) {
 func TestGetSubdirectories(t *testing.T) {
 	subdirs := GetSubdirectories("./")
 
-	if subdirs[0] != "config" {
-		t.Errorf("Subdirectories[0] should be [config], but got [%v]", subdirs)
+	if subdirs[0] != "build" && subdirs[1] != "config" && subdirs[2] != "watch" {
+		t.Errorf("Subdirectories should be [[build config watch]], but got [%v]", subdirs)
 	}
+}
+
+func TestCompileBinary(t *testing.T) {
+	scriptFilename := "output.go"
+	binaryFilename := "TestCompileBinary_output"
+	if Exist(binaryFilename) {
+		removeFile(t, binaryFilename)
+	}
+
+	scriptPath, err := filepath.Abs(scriptFilename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binaryPath, err := filepath.Abs(binaryFilename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	CompileBinary(scriptPath, binaryPath, false)
+
+	if !Exist(binaryFilename) {
+		t.Fatalf("Compiled binary does not exist: [%s]", binaryFilename)
+	}
+	defer removeFile(t, binaryFilename)
+
+	out, err := exec.Command("./" + binaryFilename).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected(t, binaryFilename, string(out), "The night is all magic\n")
+}
+
+func TestCompleteBuild(t *testing.T) {
+	scriptFilename := "build/builder.go"
+	binaryFilename := "build/TestCompleteBuildBinary_builder"
+	if Exist(binaryFilename) {
+		removeFile(t, binaryFilename)
+	}
+
+	out, err := exec.Command("./" + scriptFilename).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected(t, "build/builder.go", string(out), "Build!\n")
+
+	scriptPath, err := filepath.Abs(scriptFilename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binaryPath, err := filepath.Abs(binaryFilename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	CompileBinary(scriptPath, binaryPath, true)
+
+	if !Exist(binaryFilename) {
+		t.Fatalf("Compiled binary does not exist: [%s]", binaryFilename)
+	}
+	defer removeFile(t, binaryFilename)
+
+	out, err = exec.Command("./" + binaryFilename).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected(t, "build/builder.go", string(out), "Build!\n")
+}
+
+func TestStartBinary(t *testing.T) {
+	filename := "TestStartBinary.test"
+	if Exist(filename) {
+		removeFile(t, filename)
+	}
+
+	cmd := StartBinary("goplay", []string{"write.go", filename})
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	defer removeFile(t, filename)
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Error(err)
+	}
+	expected(t, "write.go", string(data), "Hello, World!")
+}
+
+func TestNoExtension(t *testing.T) {
+	out, err := exec.Command("./no_extension").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected(t, "no_extension", string(out), "I'm extensionless")
 }
 
 func TestInput(t *testing.T) {
@@ -212,15 +305,40 @@ func TestHotReload(t *testing.T) {
 
 	// Have to sleep long enough for file watches to be setup and binary to be started
 	// If the machine this test runs on is too slow, the sleep value needs to be increased..
-	time.Sleep(333 * time.Millisecond)
+	time.Sleep(999 * time.Millisecond)
 
 	// Modify reload.go while it is running in an infinite loop
-	modifyReloadGo(t, "var stop = true")
-	defer modifyReloadGo(t, "var stop = false") // Reset reload.go
+	modifyFile(t, "var stop = true", 6, "reload.go")
+	defer modifyFile(t, "var stop = false", 6, "reload.go") // Reset reload.go
 
 	if err := cmd.Wait(); err != nil {
 		t.Fatal(err)
 	}
 
 	expected(t, "reload.go", buffer.String(), "Start!\nStart!\nStop!\n")
+}
+
+func TestHotReloadRecursiveAndFileExtensions(t *testing.T) {
+	var buffer bytes.Buffer
+	cmd := exec.Command("./watch/watch.go")
+	cmd.Stdout = &buffer
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(999 * time.Millisecond)
+
+	modifyFile(t, "trigger rebuild", 0, "watch/recursive/watch_this.data")
+	defer modifyFile(t, "1234567890", 0, "watch/recursive/watch_this.data")
+
+	time.Sleep(999 * time.Millisecond)
+
+	modifyFile(t, "var stop = true", 8, "watch/watch.go")
+	defer modifyFile(t, "var stop = false", 8, "watch/watch.go")
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	expected(t, "watch/watch.go", buffer.String(), "Start!\nStart!\nStart!\nStop!\n")
 }

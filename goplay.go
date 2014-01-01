@@ -168,15 +168,15 @@ func main() {
 
 	// Compilation needed?
 	if compileNeeded {
-		CompileBinary(scriptPath, binaryPath)
+		CompileBinary(scriptPath, binaryPath, config.CompleteBuild)
 	}
 
 	RunWatchAndExit(scriptPath, binaryPath)
 }
 
-func CompileBinary(scriptPath string, binaryPath string) {
-	scriptDir, _ := filepath.Split(scriptPath)
-	binaryDir, _ := filepath.Split(binaryPath)
+func CompileBinary(scriptPath string, binaryPath string, goBuild bool) {
+	scriptDir := filepath.Dir(scriptPath)
+	binaryDir := filepath.Dir(binaryPath)
 
 	// Open source file for modifications
 	file, err := os.OpenFile(scriptPath, os.O_RDWR, 0)
@@ -205,8 +205,8 @@ func CompileBinary(scriptPath string, binaryPath string) {
 		}
 	}()
 
-	// Use "go build" if completeBuild flag is set
-	if config.CompleteBuild {
+	// Use "go build"
+	if goBuild {
 		// Get current directory
 		currentDir, err := os.Getwd()
 		if err != nil {
@@ -297,19 +297,21 @@ func GetTime(filename string) time.Time {
 	return info.ModTime()
 }
 
-func GetSubdirectories(path string) (paths []string) {
+func GetSubdirectories(startPath string) (paths []string) {
+	startPath = filepath.Dir(startPath)
+
 	subdirs := func(path string, fileinfo os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if fileinfo.IsDir() && !filepath.HasPrefix(fileinfo.Name(), ".") {
+		if fileinfo.IsDir() && !filepath.HasPrefix(fileinfo.Name(), ".") && path != startPath {
 			paths = append(paths, path)
 		}
 		return nil
 	}
 
-	if err := filepath.Walk(path, subdirs); err != nil {
+	if err := filepath.Walk(startPath, subdirs); err != nil {
 		log.Fatal(err)
 	}
 	return paths
@@ -352,7 +354,7 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 
 		toWatch := scriptPath
 		if config.CompleteBuild || config.HotReloadRecursive { // Watch whole directory if in CompleteBuild ("go build") or recursive mode
-			toWatch, _ = filepath.Split(scriptPath)
+			toWatch = filepath.Dir(scriptPath)
 		}
 		if err := watcher.Watch(toWatch); err != nil {
 			log.Fatal(err)
@@ -370,13 +372,13 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 		}
 	}
 
-	cmd = StartBinary(binaryPath)
+	cmd = StartBinary(binaryPath, flag.Args()[1:])
 	for {
 		err = cmd.Wait()
 		// Recompile and restart, if file watcher set restart flag to true
 		if restart {
-			CompileBinary(scriptPath, binaryPath)
-			cmd = StartBinary(binaryPath)
+			CompileBinary(scriptPath, binaryPath, config.CompleteBuild)
+			cmd = StartBinary(binaryPath, flag.Args()[1:])
 			restart = false
 		} else {
 			break
@@ -390,8 +392,8 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 }
 
 // Starts the binary file, passing additional commandline parameters along
-func StartBinary(binaryPath string) *exec.Cmd {
-	cmd := exec.Command(binaryPath, flag.Args()[1:]...)
+func StartBinary(binaryPath string, args []string) *exec.Cmd {
+	cmd := exec.Command(binaryPath, args...)
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

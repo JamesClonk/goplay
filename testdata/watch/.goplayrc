@@ -1,0 +1,5 @@
+CompleteBuild true
+HotReload true
+HotReloadRecursive true
+HotReloadWatchExtensions go,html,json,data
+

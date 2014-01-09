@@ -230,7 +230,7 @@ func CompileBinary(scriptPath string, binaryPath string, goBuild bool) {
 		}
 
 		// Build current/scripts directory
-		out, err := exec.Command("go", "build", "-o", binaryPath).Output()
+		out, err := exec.Command("go", "build", "-o", binaryPath).CombinedOutput()
 		if err != nil {
 			panic(fmt.Errorf("%s\n%s\n", err, out))
 		}

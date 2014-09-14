@@ -305,7 +305,7 @@ func TestHotReload(t *testing.T) {
 
 	// Have to sleep long enough for file watches to be setup and binary to be started
 	// If the machine this test runs on is too slow, the sleep value needs to be increased..
-	time.Sleep(3333 * time.Millisecond)
+	time.Sleep(2222 * time.Millisecond)
 
 	// Modify reload.go while it is running in an infinite loop
 	modifyFile(t, "var stop = true", 6, "reload.go")
@@ -327,13 +327,13 @@ func TestHotReloadRecursiveAndFileExtensions(t *testing.T) {
 	}
 	// #1 - Start!
 
-	time.Sleep(3333 * time.Millisecond)
+	time.Sleep(2222 * time.Millisecond)
 
 	modifyFile(t, "// trigger rebuild", 0, "watch/recursive/watch_this.data")
 	defer modifyFile(t, "// 1234567890", 0, "watch/recursive/watch_this.data")
 	// #2 - Start!
 
-	time.Sleep(3333 * time.Millisecond)
+	time.Sleep(2222 * time.Millisecond)
 
 	modifyFile(t, "var stop = true", 8, "watch/watch.go")
 	defer modifyFile(t, "var stop = false", 8, "watch/watch.go")

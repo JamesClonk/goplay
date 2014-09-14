@@ -323,7 +323,6 @@ func GetSubdirectories(startPath string) (paths []string) {
 func RunWatchAndExit(scriptPath string, binaryPath string) {
 	var err error
 	var cmd *exec.Cmd
-	work := make(chan bool, 1) // use this channel as a locking mechanism for file watcher, so only one file change event gets worked on at a time
 	restart := false
 
 	if config.HotReload {
@@ -332,11 +331,8 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 			log.Fatal(err)
 		}
 
-		work <- true // allow watcher to work
 		go func() {
 			for {
-				<-work // block if empty
-
 				select {
 				case event := <-watcher.Event:
 					if !restart && !event.IsAttrib() {
@@ -350,15 +346,10 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 							config.HotReloadWatchExtensions.Contains(fileExtension) { // or if it has one of the defined extensions to watch
 							restart = true
 							cmd.Process.Kill()
-						} else {
-							work <- true
 						}
-					} else {
-						work <- true
 					}
 				case err := <-watcher.Error:
 					log.Println(err)
-					work <- true
 				}
 			}
 		}()
@@ -390,8 +381,8 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 		if restart {
 			CompileBinary(scriptPath, binaryPath, config.CompleteBuild)
 			cmd = StartBinary(binaryPath, flag.Args()[1:])
+			time.Sleep(333 * time.Millisecond)
 			restart = false
-			work <- true // allow watcher to continue working/watching
 		} else {
 			break
 		}

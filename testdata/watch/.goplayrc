@@ -1,3 +1,4 @@
+ForceCompile Yes
 CompleteBuild true
 HotReload true
 HotReloadRecursive true

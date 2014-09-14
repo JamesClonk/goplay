@@ -45,7 +45,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/howeyc/fsnotify"
 	"go/build"
 	"log"
 	"os"
@@ -55,6 +54,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/howeyc/fsnotify"
 )
 
 // goplay hashbang
@@ -322,6 +323,7 @@ func GetSubdirectories(startPath string) (paths []string) {
 func RunWatchAndExit(scriptPath string, binaryPath string) {
 	var err error
 	var cmd *exec.Cmd
+	work := make(chan bool, 1) // use this channel as a locking mechanism for file watcher, so only one file change event gets worked on at a time
 	restart := false
 
 	if config.HotReload {
@@ -330,11 +332,14 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 			log.Fatal(err)
 		}
 
+		work <- true // allow watcher to work
 		go func() {
 			for {
+				<-work // block if empty
+
 				select {
 				case event := <-watcher.Event:
-					if !restart {
+					if !restart && !event.IsAttrib() {
 						// Get filename & extension
 						fileName := filepath.Base(event.Name)
 						fileExtension := filepath.Ext(fileName)
@@ -345,10 +350,15 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 							config.HotReloadWatchExtensions.Contains(fileExtension) { // or if it has one of the defined extensions to watch
 							restart = true
 							cmd.Process.Kill()
+						} else {
+							work <- true
 						}
+					} else {
+						work <- true
 					}
 				case err := <-watcher.Error:
 					log.Println(err)
+					work <- true
 				}
 			}
 		}()
@@ -381,6 +391,7 @@ func RunWatchAndExit(scriptPath string, binaryPath string) {
 			CompileBinary(scriptPath, binaryPath, config.CompleteBuild)
 			cmd = StartBinary(binaryPath, flag.Args()[1:])
 			restart = false
+			work <- true // allow watcher to continue working/watching
 		} else {
 			break
 		}
